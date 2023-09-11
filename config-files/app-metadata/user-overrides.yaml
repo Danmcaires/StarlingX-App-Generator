@@ -1,0 +1,47 @@
+# for further details about this file possible configurations please
+# visit the link: https://wiki.openstack.org/wiki/StarlingX/Containers/StarlingXAppsInternals#metadata.yaml
+app_name: app-name
+app_version: app-version
+
+# the following configurations are optional
+# uncomment and configure properly the ones you need for your application metadata
+#upgrades:
+#  auto_update: <true/false/yes/no>
+#    update_failure_no_rollback: <true/false/yes/no>
+#    from_versions:
+#      - <version.1>
+#      - <version.2>
+#      # ...
+#    supported_k8s_version:
+#      minimum: <version>
+#      maximum: <version>
+#    supported_releases:
+#      <release>:
+#        - <patch.1>
+#        - <patch.2>
+#        # ...
+#    repo: <helm repo>
+#    disabled_charts:
+#      - <chart name>
+#      - <chart name>
+#      # ...
+#maintain_attributes: <true|false>
+#maintain_user_overrides: <true|false>
+#behavior:
+#      platform_managed_app: <true/false/yes/no>
+#      desired_state: <uploaded/applied>
+#      evaluate_reapply: <string>
+#            after:
+#                  - <app_name.1>
+#                  - <app_name.2>
+#                  - ...
+#            triggers:
+#                  - type: <key in APP_EVALUATE_REAPPLY_TRIGGER_TO_METADATA_MAP>
+#                  - type: <key in APP_EVALUATE_REAPPLY_TRIGGER_TO_METADATA_MAP>
+#                  - ...
+#                  filters:
+#                          - <field_name.1>: <value_name.1>
+#                          - <field_name.2>: <value_name.2>
+#                          - ...
+#                    filter_field: <field_name>
+#apply_progress_adjust: <0/1/2/.../100>

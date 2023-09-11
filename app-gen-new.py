@@ -282,8 +282,8 @@ class FluxApplication:
             return ret
 
 
-def parse_yaml(yaml_in):
-    yaml_data=''
+def parse_yaml(yaml_in) -> dict:
+    yaml_data=dict()
     try:
         with open(yaml_in) as f:
             yaml_data = yaml.safe_load(f)
@@ -303,6 +303,22 @@ def generate_app(file_in, out_folder, overwrite):
     flux_manifest = FluxApplication(app_data)
     app_out = out_folder + '/' + flux_manifest.get_app_name()
     flux_manifest.gen_app(app_out, overwrite)
+
+
+def write_app_metadata():
+    """
+    gets the keys and values definined in the user-overrides.yaml and writes the metadata.yaml app file.
+    If the user didn't changed the app_name or the app_version in the user-overrides.yaml, the script gets
+    these values from the helm-chart Chart.yaml
+    """
+    helm_chart_data = parse_yaml('./helm-chart/Chart.yaml')
+    yaml_usr_data = parse_yaml('./config-files/app-metadata/user-overrides.yaml')
+    if yaml_usr_data['app_name'] == 'app-name':
+        yaml_usr_data['app_name'] = helm_chart_data['name']
+    if yaml_usr_data['app_version'] == 'app-version':
+        yaml_usr_data['app_version'] = helm_chart_data['appVersion']
+    with open('metadata.yaml', 'w') as f:
+        yaml.dump(yaml_usr_data, f, Dumper=yaml.SafeDumper)
 
 
 def main(argv):
