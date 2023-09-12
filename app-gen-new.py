@@ -11,6 +11,8 @@ from urllib import request
 SCHEMA_KUSTOMIZATION_TEMPLATE = 'templates_flux/kustomization.template'
 SCHEMA_BASE_TEMPLATES = 'templates_flux/base/'
 SCHEMA_MANIFEST_TEMPLATE = 'templates_flux/fluxcd-manifest'
+SCHEMA_COMMON_TEMPLATE = 'templates_plugins/common.template'
+SCHEMA_HELM_TEMPLATE = 'templates_plugins/helm.template'
 TEMP_USER_DIR = '/tmp/' + getpass.getuser() + '/'
 # Temp app work dir to hold git repo and upstream tarball
 # TEMP_APP_DIR = TEMP_USER_DIR/appName
@@ -102,13 +104,11 @@ class FluxApplication:
 
 
     # Sub-process of app generation
-    # generate application manifest file
+    # generate application fluxcd manifest files
     #
     def _gen_fluxcd_manifest(self):
         # check manifest file existance
-        flux_dir = self._flux_manifest['outputDir'] + '/fluxcd-manifests/'
-
-        # manifest_dir = self._flux_manifest['outputDir'] + '/fluxcd-manifests/fluxcd-manifest-'
+        flux_dir = self._flux_manifest['outputFluxDir']
 
         # update schema path to abspath
         kustomization_template = APP_GEN_PY_PATH + '/' + SCHEMA_KUSTOMIZATION_TEMPLATE
@@ -242,27 +242,85 @@ class FluxApplication:
             open(system_override_file, 'w').close()
 
         return True
+    
+
+    def _gen_plugins(self):
+
+        plugin_dir =  self._flux_manifest['outputPluginDir']
+
+        common_template = APP_GEN_PY_PATH + '/' + SCHEMA_COMMON_TEMPLATE
+        helm_template = APP_GEN_PY_PATH + '/' + SCHEMA_HELM_TEMPLATE
+
+        appname = self._flux_manifest['appName'].replace(" ", "-")
+        namespace = self._flux_manifest['namespace']
+        name = self._flux_chart[0]['name']
+
+        # generate Common files
+        try:
+            with open(common_template, 'r') as f:
+                common_schema = f.read()
+        except IOError:
+            print('File %s not found' % common_template)
+            return False
+        common_file = plugin_dir + '/' + appname + '/common/constants.py'
+        output = common_schema.format(appname=appname, name=name, namespace=namespace)
+        
+        with open(common_file, "w") as f:
+            f.write(output)
+
+        init_file = plugin_dir + '/' + appname + '/common/__init__.py'
+        open(init_file, 'w').close()
+
+        chart = self._flux_chart
+       
+        # Generate Helm files
+        try:
+            with open(helm_template, 'r') as f:
+                helm_schema = f.read()
+        except IOError:
+            print('File %s not found' % helm_template)
+            return False
+        
+        for idx in range(len(chart)):
+            a_chart = chart[idx]
+
+            helm_file = plugin_dir + '/' + appname + '/helm/' + a_chart['name'] + '.py'
+            
+            name = re.sub(r'[^a-zA-Z0-9 ]', '', a_chart['name'])
+            namespace = a_chart['namespace']
+
+            output = helm_schema.format(appname=appname, name=name)
+
+            with open(helm_file, "w") as f:
+                f.write(output)
+        
+        init_file = plugin_dir + '/' + appname + '/helm/__init__.py'
+        open(init_file, 'w').close()
 
 
-    def gen_app(self, output_dir, overwrite):
+        # Generate setup.py
+        setupPy_file = plugin_dir + '/setup.py'
+        file = """import setuptools\n\nsetuptools.setup(\n    setup_requires=['pbr>=2.0.0'],\n    pbr=True)"""
+        
+        with open(setupPy_file, 'w') as f:
+            f.write(file)
 
-        self._flux_manifest['outputDir'] = output_dir
-
-        self._flux_manifest['outputChartDir'] = output_dir + '/charts'
-
-        self._flux_manifest['outputFluxDir'] = output_dir + '/fluxcd-manifests'
-        self._flux_manifest['outputFluxBaseDir'] = output_dir + '/fluxcd-manifests/base'
-
-        self._flux_manifest['outputPluginDir'] = output_dir + '/plugins'
+        # Generate setup.cfg file
+        setupCfg_file = plugin_dir + '/setup.cfg'
 
 
-        if not os.path.exists(self._flux_manifest['outputDir']):
-            os.makedirs(self._flux_manifest['outputDir'])
-        elif overwrite:
-            shutil.rmtree(self._flux_manifest['outputDir'])
-        else:
-            print('Output folder %s exists, please remove it or use --overwrite.' % self._flux_manifest['outputDir'])
-            return ret
+        init_file = plugin_dir + '/__init__.py'
+        open(init_file, 'w').close()
+
+        return True
+
+    
+    def _create_flux_dir(self, output_dir):
+
+        self._flux_manifest['outputChartDir'] = output_dir + '/charts/'
+        self._flux_manifest['outputFluxDir'] = output_dir + '/fluxcd-manifests/'
+        self._flux_manifest['outputFluxBaseDir'] = output_dir + '/fluxcd-manifests/base/'
+
         if not os.path.exists(self._flux_manifest['outputChartDir']):
             os.makedirs(self._flux_manifest['outputChartDir'])
         if not os.path.exists(self._flux_manifest['outputFluxDir']):
@@ -271,14 +329,50 @@ class FluxApplication:
                 chart = self._flux_chart[idx]
                 self._flux_manifest['outputFluxManifestDir'] = output_dir + '/fluxcd-manifests/' + chart['name']
                 os.makedirs(self._flux_manifest['outputFluxManifestDir'])
+
+    
+    def _create_plugins_dir(self, output_dir):
+        
+        self._flux_manifest['outputPluginDir'] = output_dir + '/plugins'
+        self._flux_manifest['outputHelmDir'] = output_dir + '/plugins/' + self._flux_manifest['appName'].replace(" ", "-") + '/helm/'
+        self._flux_manifest['outputCommonDir'] = output_dir + '/plugins/' + self._flux_manifest['appName'].replace(" ", "-") + '/common/'
+
         if not os.path.exists(self._flux_manifest['outputPluginDir']):
             os.makedirs(self._flux_manifest['outputPluginDir'])
+        if not os.path.exists(self._flux_manifest['outputHelmDir']):
+            os.makedirs(self._flux_manifest['outputHelmDir'])
+        if not os.path.exists(self._flux_manifest['outputCommonDir']):
+            os.makedirs(self._flux_manifest['outputCommonDir'])
 
+
+    def gen_app(self, output_dir, overwrite):
+
+        self._flux_manifest['outputDir'] = output_dir
+
+        if not os.path.exists(self._flux_manifest['outputDir']):
+            os.makedirs(self._flux_manifest['outputDir'])
+        elif overwrite:
+            shutil.rmtree(self._flux_manifest['outputDir'])
+        else:
+            print('Output folder %s exists, please remove it or use --overwrite.' % self._flux_manifest['outputDir'])
+            return ret
+
+        self._create_flux_dir(output_dir)
+        self._create_plugins_dir(output_dir)
+        
         ret = self._gen_fluxcd_manifest()
         if ret:
             print('FluxCD manifest generated!')
         else:
             print('FluxCCD manifest generation failed!')
+            return ret
+
+
+        ret = self._gen_plugins()
+        if ret:
+            print('Plugins generated!')
+        else:
+            print('Plugins generation failed!')
             return ret
 
 
