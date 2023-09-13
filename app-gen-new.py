@@ -35,7 +35,7 @@ class FluxApplication:
         self._flux_manifest= app_data['appManifestFile-config']
         self.APP_NAME = self._flux_manifest['appName']
         self.APP_NAME_WITH_UNDERSCORE = self._flux_manifest['appName'].replace('-', '_').replace(' ', '_')
-        self.APP_NAME_CAMEL_CASE = self._flux_manifest['appName'].replace('-', ' ').title().replace(' ','')
+        self.APP_NAME_CAMEL_CASE = self._flux_manifest['appName'].replace('-', ' ').title().replace(' ', '')
 
         # Initialize chartgroup
         self._flux_chartgroup = app_data['appManifestFile-config']['chartGroup']
@@ -119,7 +119,7 @@ class FluxApplication:
 
         # update schema path to abspath
         kustomization_template = APP_GEN_PY_PATH + '/' + SCHEMA_KUSTOMIZATION_TEMPLATE
-        
+
         base_helmrepo_template = APP_GEN_PY_PATH + '/' + SCHEMA_BASE_TEMPLATES + '/helmrepository.template'
         base_kustom_template = APP_GEN_PY_PATH + '/' + SCHEMA_BASE_TEMPLATES + '/kustomization.template'
         base_namespace_template = APP_GEN_PY_PATH + '/' + SCHEMA_BASE_TEMPLATES + '/namespace.template'
@@ -226,7 +226,7 @@ class FluxApplication:
                     manifest_kustomization_schema = f.readlines()
             except IOError:
                 print('File %s not found' % manifest_kustomization_template)
-                return False            
+                return False
             manifest_kustomization_file = flux_dir + a_chart['name'] + '/kustomization.yaml'
             with open(manifest_kustomization_file, 'a') as f:
                 # fetch chart specific info
@@ -347,47 +347,7 @@ class FluxApplication:
             f.write(file)
 
         # Generate setup.cfg file
-        try:
-            with open(setup_template, 'r') as f:
-                setup_schema = f.read()
-        except IOError:
-            print('File %s not found' % setup_template)
-            return False
-        setupCfg_file = plugin_dir + '/setup.cfg'
-        with open(setupCfg_file, 'a') as f:
-            # substitute values
-            for line in setup_schema:
-                # substitute template values to manifest values
-                out_line, substituted = self._substitute_values(line, self.plugin_setup["options"])
-                if not substituted:
-                    # substitute template blocks to manifest blocks
-                    out_line = self._substitute_blocks(line, self.plugin_setup["options"])
-                f.write(out_line)
-        
-        output = setup_schema.format(
-            foldername = self._flux_manifest['appName'].replace(" ", "-"),
-            appname = self._flux_manifest['appName'],
-            author = self.plugin_setup['author'],
-            authoremail = self.plugin_setup['author-email'],
-            url = self.plugin_setup['url'],
-            appnameunderscore = self.APP_NAME_WITH_UNDERSCORE)
-        with open(setupCfg_file, "w") as f:
-            f.write(output)
-        
-        cont = 1
-        for idx in range(len(chart)):
-            a_chart = chart[idx]
-            output = "    00" + str(cont) + "_" + a_chart["name"] + " = " + self._flux_manifest['appName'].replace(" ", "-") + ".helm." + a_chart['name'] + ":" + a_chart['name'].replace('-', ' ').title().replace(' ','') + "Helm\n"
-            with open(setupCfg_file, "a") as f:
-                f.write(output)
-            cont += 1
-        
-        outputfinal = "\n[bdist_wheel]\nuniversal = 1"
-        with open(setupCfg_file, "a") as f:
-            f.write(outputfinal)
-
-
-
+        self.write_app_setup()
 
         init_file = plugin_dir + '/__init__.py'
         open(init_file, 'w').close()
@@ -448,13 +408,13 @@ class FluxApplication:
             "--universal",
             "-d",
             dirpluginapp]
-        
+
         try:
             result = subprocess.check_output(command, stderr=subprocess.STDOUT)
             print(result)
         except:
             return False
-        
+
         return True
 
     # Sub-process of app generation
@@ -485,7 +445,7 @@ class FluxApplication:
         t.close()
         os.chdir(store_cwd)
         return tarname
-    
+
 
     def gen_app(self, output_dir, overwrite):
 
@@ -514,7 +474,7 @@ class FluxApplication:
         else:
             print('Plugins generation failed!')
             return ret
-        
+
         ret = self._gen_plugin_wheels()
         if ret:
             print('Plugin wheels generated!')
@@ -542,42 +502,52 @@ class FluxApplication:
         with open('metadata.yaml', 'w') as f:
             yaml.dump(yml_data, f, Dumper=yaml.SafeDumper)
 
-
     def write_app_setup(self):
+        def split_and_format_value(value) -> str:
+            if type(value) == str:
+                return ''.join([f'\t{lin}\n' for lin in value.split('\n')])
+            else:
+                return ''.join([f'\t{lin}\n' for lin in value])
+
         yml_data = parse_yaml('app_manifest.yaml')['setupFile-config']
+        yml_data['metadata']['name'] = f'k8sapp-{self.APP_NAME}'
+        yml_data['metadata']['summary'] = f'StarlingX sysinv extensions for {self.APP_NAME}'
         out = ''
         for label in yml_data:
             out += f'[{label}]\n'
-            for key in yml_data[label]:
-                if key == 'name' and not yml_data[label][key]:
-                    yml_data[label][key] = f'k8sapp-{self._flux_manifest.appName}'
-                elif key == 'packages' and not yml_data[label][key]:
-                    yml_data[label][key] = f'k8sapp_{self.APP_NAME_WITH_UNDERSCORE}'
-                elif key == 'setup-hooks' and not yml_data[label][key]:
-                    yml_data[label][key] = 'pbr.hooks.setup_hook'
-                elif key == 'systemconfig.helm_applications' and not yml_data[label][key]:
-                    formatted_value = f'{self._flux_manifest.appName} ' \
-                                     f'= systemconfig.helm_plugins.{self.APP_NAME_WITH_UNDERSCORE}'
-                    yml_data[label][key] = formatted_value
-                elif key == 'systemconfig.helm_plugins.poc_starlingx' and not yml_data[label][key]:
-                    yml_data[label][key] = ''
-                    for i, chart in enumerate(yml_data['appManifestFile-config']['chart']):
-                        yml_data[label][key] += f'{i+1:03d}_{chart.name} = {yml_data["files"]["packages"]}.helm.' \
-                                                f'{self.APP_NAME_WITH_UNDERSCORE}:{self.APP_NAME_CAMEL_CASE}Helm\n'
-                elif key == 'systemconfig.fluxcd.kustomize_ops' and not yml_data[label][key]:
-                    yml_data[label][key] = f'{self.APP_NAME} = {yml_data["files"]["packages"]}.kustomize.kustomize_' \
-                                           f'{self.APP_NAME_WITH_UNDERSCORE}:{self.APP_NAME_CAMEL_CASE}' \
-                                           'FluxCDKustomizeOperator'
-                elif key == 'universal' and not yml_data[label][key]:
-                    yml_data[label][key] = 1
-
-                # TO-DO
-                # * terminar de ajustar o formato do metadata.template
-                # * testar a nova função
-                # * colocar o resto das funções na classe FluxCDManifest
-                # * discutir com o Daniel se devemos deixar possibilidade do usuário escrever os valores default ou não
-                with open(f'./{self._flux_manifest.appName}/plugins/setup.cfg', 'w') as f:
-                    f.write(out)
+            for key, val in yml_data[label].items():
+                if label == 'metadata' and val is None:
+                    raise ValueError(f'You should\'ve written a value for: {key}')
+                elif type(val) != list:
+                    out += f'{key} = {val}\n'
+                else:
+                    out += f'{key} =\n'
+                    out += split_and_format_value(val)
+            out += '\n'
+        charts_data = parse_yaml('app_manifest.yaml')['appManifestFile-config']['chart']
+        print(charts_data[0])
+        plugins_names = []
+        for dic in charts_data:
+            plugins_names.append(dic['name'])
+        out += f'[files]\npackages =\n\tk8sapp_{self.APP_NAME_WITH_UNDERSCORE}\n\n'
+        out += '[global]\nsetup-hooks =\n\tpbr.hooks.setup_hook\n\n'
+        out += '[entry_points]\nsystemconfig.helm_applications =\n' \
+               f'{self.APP_NAME} = systemconfig.helm_plugins.{self.APP_NAME_WITH_UNDERSCORE}\n\n' \
+               f'systemconfig.helm_plugins.{self.APP_NAME_WITH_UNDERSCORE} =\n'
+        print(plugins_names)
+        for i, plug in enumerate(plugins_names):
+            out += f'\t{i+1:03d}_{plug} = k8sapp.{self.APP_NAME_WITH_UNDERSCORE}.helm.{plug.replace("-","_")}'
+            out += f':{plug.replace("-", " ").title().replace(" ", "")}Helm\n'
+        out += '\n'
+        out += 'systemconfig.fluxcd.kustomize_ops =\n' \
+               f'\t{self.APP_NAME} = k8sapp_{self.APP_NAME_WITH_UNDERSCORE}.kustomize.kustomize_' \
+               f'{self.APP_NAME_WITH_UNDERSCORE}:{self.APP_NAME_CAMEL_CASE}FluxCDKustomizeOperator\n\n' \
+               'systemconfig.app_lifecycle =\n' \
+               f'\t{self.APP_NAME} = k8sapp_{self.APP_NAME_WITH_UNDERSCORE}.lifecycle.lifecycle_' \
+               f'{self.APP_NAME_WITH_UNDERSCORE}:{self.APP_NAME_CAMEL_CASE}AppLifecycleOperator\n\n'
+        out += '[bdist_wheel]\nuniversal = 1'
+        with open(f'./{self.APP_NAME}/plugins/setup.cfg', 'w') as f:
+            f.write(out)
 
 
 def parse_yaml(yaml_in) -> dict:
