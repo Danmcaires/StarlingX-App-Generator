@@ -47,7 +47,7 @@ class FluxApplication:
             self._flux_chart[i]['namespace'] = self._flux_manifest['namespace']
 
         # Initialize setup data
-        self._plugin_setup = app_data['setupFile-config']
+        self.plugin_setup = app_data['setupFile-config']
 
 
     def get_app_name(self):
@@ -358,18 +358,18 @@ class FluxApplication:
             # substitute values
             for line in setup_schema:
                 # substitute template values to manifest values
-                out_line, substituted = self._substitute_values(line, self._plugin_setup["options"])
+                out_line, substituted = self._substitute_values(line, self.plugin_setup["options"])
                 if not substituted:
                     # substitute template blocks to manifest blocks
-                    out_line = self._substitute_blocks(line, self._plugin_setup["options"])
+                    out_line = self._substitute_blocks(line, self.plugin_setup["options"])
                 f.write(out_line)
         
         output = setup_schema.format(
             foldername = self._flux_manifest['appName'].replace(" ", "-"),
             appname = self._flux_manifest['appName'],
-            author = self._plugin_setup['author'],
-            authoremail = self._plugin_setup['author-email'],
-            url = self._plugin_setup['url'],
+            author = self.plugin_setup['author'],
+            authoremail = self.plugin_setup['author-email'],
+            url = self.plugin_setup['url'],
             appnameunderscore = self.APP_NAME_WITH_UNDERSCORE)
         with open(setupCfg_file, "w") as f:
             f.write(output)
