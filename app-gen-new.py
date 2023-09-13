@@ -30,15 +30,18 @@ class FluxApplication:
         self._flux_manifest = {}
 
         # Initialize manifest
-        self._flux_manifest['appName'] = app_data['appName']
-        self._flux_manifest['namespace'] = app_data['namespace']
+        self._flux_manifest['appName'] = app_data['appManifestFile-config']['appName']
+        self.APP_NAME = self._flux_manifest['appName']
+        self.APP_NAME_WITH_UNDERSCORE = self._flux_manifest['appName'].replace('-', '_')
+        self.APP_NAME_CAMEL_CASE = self._flux_manifest['appName'].replace('-', ' ').title().replace(' ','')
+        self._flux_manifest['namespace'] = app_data['appManifestFile-config']['namespace']
 
         # Initialize chartgroup
-        self._flux_chartgroup = app_data['chartGroup']
+        self._flux_chartgroup = app_data['appManifestFile-config']['chartGroup']
         self._flux_chartgroup[0]['namespace'] = self._flux_manifest['namespace']
 
         # Initialize chart
-        self._flux_chart = app_data['chart']
+        self._flux_chart = app_data['appManifestFile-config']['chart']
         for i in range(len(self._flux_chart)):
             self._flux_chart[i]['namespace'] = self._flux_manifest['namespace']
 
@@ -355,7 +358,6 @@ class FluxApplication:
             shutil.rmtree(self._flux_manifest['outputDir'])
         else:
             print('Output folder %s exists, please remove it or use --overwrite.' % self._flux_manifest['outputDir'])
-            return ret
 
         self._create_flux_dir(output_dir)
         self._create_plugins_dir(output_dir)
@@ -375,7 +377,51 @@ class FluxApplication:
             print('Plugins generation failed!')
             return ret
 
+    def write_app_metadata(self):
+        """
+        gets the keys and values defined in the app-manifest.yaml and writes the metadata.yaml app file.
+        """
+        yml_data = parse_yaml('app_manifest.yaml')['appManifestFile-config']
+        yml_data['app_name'] = self._flux_manifest['appName']
+        yml_data['app_version'] = self._flux_manifest['appVersion']
+        with open('metadata.yaml', 'w') as f:
+            yaml.dump(yml_data, f, Dumper=yaml.SafeDumper)
 
+    def write_app_setup(self):
+        yml_data = parse_yaml('app_manifest.yaml')['setupFile-config']
+        out = ''
+        for label in yml_data:
+            out += f'[{label}]\n'
+            for key in yml_data[label]:
+                if key == 'name' and not yml_data[label][key]:
+                    yml_data[label][key] = f'k8sapp-{self._flux_manifest.appName}'
+                elif key == 'packages' and not yml_data[label][key]:
+                    yml_data[label][key] = f'k8sapp_{self.APP_NAME_WITH_UNDERSCORE}'
+                elif key == 'setup-hooks' and not yml_data[label][key]:
+                    yml_data[label][key] = 'pbr.hooks.setup_hook'
+                elif key == 'systemconfig.helm_applications' and not yml_data[label][key]:
+                    formatted_value = f'{self._flux_manifest.appName} ' \
+                                     f'= systemconfig.helm_plugins.{self.APP_NAME_WITH_UNDERSCORE}'
+                    yml_data[label][key] = formatted_value
+                elif key == 'systemconfig.helm_plugins.poc_starlingx' and not yml_data[label][key]:
+                    yml_data[label][key] = ''
+                    for i, chart in enumerate(yml_data['appManifestFile-config']['chart']):
+                        yml_data[label][key] += f'{i+1:03d}_{chart.name} = {yml_data["files"]["packages"]}.helm.' \
+                                                f'{self.APP_NAME_WITH_UNDERSCORE}:{self.APP_NAME_CAMEL_CASE}Helm\n'
+                elif key == 'systemconfig.fluxcd.kustomize_ops' and not yml_data[label][key]:
+                    yml_data[label][key] = f'{self.APP_NAME} = {yml_data["files"]["packages"]}.kustomize.kustomize_' \
+                                           f'{self.APP_NAME_WITH_UNDERSCORE}:{self.APP_NAME_CAMEL_CASE}' \
+                                           'FluxCDKustomizeOperator'
+                elif key == 'universal' and not yml_data[label][key]:
+                    yml_data[label][key] = 1
+
+                # TO-DO
+                # * terminar de ajustar o formato do metadata.template
+                # * testar a nova função
+                # * colocar o resto das funções na classe FluxCDManifest
+                # * discutir com o Daniel se devemos deixar possibilidade do usuário escrever os valores default ou não
+                with open(f'./{self._flux_manifest.appName}/plugins/setup.cfg', 'w') as f:
+                    f.write(out)
 def parse_yaml(yaml_in) -> dict:
     yaml_data=dict()
     try:
@@ -397,22 +443,6 @@ def generate_app(file_in, out_folder, overwrite):
     flux_manifest = FluxApplication(app_data)
     app_out = out_folder + '/' + flux_manifest.get_app_name()
     flux_manifest.gen_app(app_out, overwrite)
-
-
-def write_app_metadata():
-    """
-    gets the keys and values definined in the user-overrides.yaml and writes the metadata.yaml app file.
-    If the user didn't changed the app_name or the app_version in the user-overrides.yaml, the script gets
-    these values from the helm-chart Chart.yaml
-    """
-    helm_chart_data = parse_yaml('./helm-chart/Chart.yaml')
-    yaml_usr_data = parse_yaml('./config-files/app-metadata/user-overrides.yaml')
-    if yaml_usr_data['app_name'] == 'app-name':
-        yaml_usr_data['app_name'] = helm_chart_data['name']
-    if yaml_usr_data['app_version'] == 'app-version':
-        yaml_usr_data['app_version'] = helm_chart_data['appVersion']
-    with open('metadata.yaml', 'w') as f:
-        yaml.dump(yaml_usr_data, f, Dumper=yaml.SafeDumper)
 
 
 def main(argv):

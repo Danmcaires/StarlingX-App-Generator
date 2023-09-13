@@ -1,18 +1,91 @@
 ---
-appName: poc-starlingx
-appVersion: 1.0.1
-namespace: default
-chart:
-  - name: poc-starlingx
-    version: 1.0-1
-    path: ./helm-chart/
-    chartGroup: poc-starlingx-charts
-  - name: poc-starlingx-2
-    version: 1.0-1
-    path: ./helm-chart/
-    chartGroup: poc-starlingx-charts
-chartGroup:
-  - name: poc-starlingx-charts
-    chart_names:
-      - poc-starlingx
-      - poc-starlingx-2
+#################################################
+## App Manifest Configuration
+appManifestFile-config: # LEAVE EMPTY
+  appName: poc-starlingx
+  appVersion: 1.0.1
+  namespace: default
+  chart:
+    - name: poc-starlingx
+      version: 1.0-1
+      path: ./helm-chart/
+      chartGroup: poc-starlingx-charts
+    - name: poc-starlingx-2
+      version: 1.0-1
+      path: ./helm-chart/
+      chartGroup: poc-starlingx-charts
+  chartGroup:
+    - name: poc-starlingx-charts
+      chart_names:
+        - poc-starlingx
+        - poc-starlingx-2
+#################################################
+## App Metadata Configuration
+# for further details about this file possible configurations please
+# visit the link: https://wiki.openstack.org/wiki/StarlingX/Containers/StarlingXAppsInternals#metadata.yaml
+metadataFile-config: # LEAVE EMPTY
+  # the following configurations are optional
+  # uncomment and configure properly the ones you need for your application metadata
+  #upgrades:
+  #  auto_update: <true/false/yes/no>
+  #    update_failure_no_rollback: <true/false/yes/no>
+  #    from_versions:
+  #      - <version.1>
+  #      - <version.2>
+  #      # ...
+  #    supported_k8s_version:
+  #      minimum: <version>
+  #      maximum: <version>
+  #    supported_releases:
+  #      <release>:
+  #        - <patch.1>
+  #        - <patch.2>
+  #        # ...
+  #    repo: <helm repo>
+  #    disabled_charts:
+  #      - <chart name>
+  #      - <chart name>
+  #      # ...
+  #maintain_attributes: <true|false>
+  #maintain_user_overrides: <true|false>
+  #behavior:
+  #      platform_managed_app: <true/false/yes/no>
+  #      desired_state: <uploaded/applied>
+  #      evaluate_reapply: <string>
+  #            after:
+  #                  - <app_name.1>
+  #                  - <app_name.2>
+  #                  - ...
+  #            triggers:
+  #                  - type: <key in APP_EVALUATE_REAPPLY_TRIGGER_TO_METADATA_MAP>
+  #                  - type: <key in APP_EVALUATE_REAPPLY_TRIGGER_TO_METADATA_MAP>
+  #                  - ...
+  #                  filters:
+  #                          - <field_name.1>: <value_name.1>
+  #                          - <field_name.2>: <value_name.2>
+  #                          - ...
+  #                    filter_field: <field_name>
+  #apply_progress_adjust: <0/1/2/.../100>
+
+#################################################
+## App Setup Configuration
+# if you wish to see an setup.cfg example, please see the link
+# https://opendev.org/starlingx/app-dell-storage/src/branch/master/python3-k8sapp-dell-storage/k8sapp_dell_storage/setup.cfg
+setupFile-config: # LEAVE EMPTY
+  metadata:  # LEAVE EMPTY
+    name: # leave empty for default
+    summary:  # required
+    author:  # required
+    author-email: # required
+    url: # required
+    classifier: # requireds
+  options: # LEAVE EMPTY
+    install_requires: # required
+  files: # LEAVE EMPTY
+    packages: # leave empty for default
+  global: # LEAVE EMPTY
+    setup-hooks: # leave empty for default
+    systemconfig.helm_applications: # leave empty for default
+    systemconfig.helm_plugins.poc_starlingx: # leave empty for default
+  bdist_wheel: # LEAVE EMPTYs
+    universal: # leave empty for default
