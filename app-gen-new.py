@@ -13,6 +13,8 @@ SCHEMA_BASE_TEMPLATES = 'templates_flux/base/'
 SCHEMA_MANIFEST_TEMPLATE = 'templates_flux/fluxcd-manifest'
 SCHEMA_COMMON_TEMPLATE = 'templates_plugins/common.template'
 SCHEMA_HELM_TEMPLATE = 'templates_plugins/helm.template'
+SCHEMA_KUSTOMIZE_TEMPLATE = 'templates_plugins/kustomize.template'
+SCHEMA_LIFECYCLE_TEMPLATE = 'templates_plugins/lifecycle.template'
 TEMP_USER_DIR = '/tmp/' + getpass.getuser() + '/'
 # Temp app work dir to hold git repo and upstream tarball
 # TEMP_APP_DIR = TEMP_USER_DIR/appName
@@ -30,11 +32,10 @@ class FluxApplication:
         self._flux_manifest = {}
 
         # Initialize manifest
-        self._flux_manifest['appName'] = app_data['appManifestFile-config']['appName']
+        self._flux_manifest= app_data['appManifestFile-config']
         self.APP_NAME = self._flux_manifest['appName']
-        self.APP_NAME_WITH_UNDERSCORE = self._flux_manifest['appName'].replace('-', '_')
+        self.APP_NAME_WITH_UNDERSCORE = self._flux_manifest['appName'].replace('-', '_').replace(' ', '_')
         self.APP_NAME_CAMEL_CASE = self._flux_manifest['appName'].replace('-', ' ').title().replace(' ','')
-        self._flux_manifest['namespace'] = app_data['appManifestFile-config']['namespace']
 
         # Initialize chartgroup
         self._flux_chartgroup = app_data['appManifestFile-config']['chartGroup']
@@ -44,6 +45,9 @@ class FluxApplication:
         self._flux_chart = app_data['appManifestFile-config']['chart']
         for i in range(len(self._flux_chart)):
             self._flux_chart[i]['namespace'] = self._flux_manifest['namespace']
+
+        # Initialize setup data
+        self._plugin_setup = app_data['setupFile-config']
 
 
     def get_app_name(self):
@@ -253,6 +257,9 @@ class FluxApplication:
 
         common_template = APP_GEN_PY_PATH + '/' + SCHEMA_COMMON_TEMPLATE
         helm_template = APP_GEN_PY_PATH + '/' + SCHEMA_HELM_TEMPLATE
+        kustomize_template = APP_GEN_PY_PATH + '/' + SCHEMA_KUSTOMIZE_TEMPLATE
+        lifecycle_template = APP_GEN_PY_PATH + '/' + SCHEMA_LIFECYCLE_TEMPLATE
+        setup_template = APP_GEN_PY_PATH + '/templates_plugins/setup.template'
 
         appname = self._flux_manifest['appName'].replace(" ", "-")
         namespace = self._flux_manifest['namespace']
@@ -289,7 +296,7 @@ class FluxApplication:
 
             helm_file = plugin_dir + '/' + appname + '/helm/' + a_chart['name'] + '.py'
 
-            name = re.sub(r'[^a-zA-Z0-9 ]', '', a_chart['name'])
+            name = a_chart['name'].replace('-', ' ').title().replace(' ','')
             namespace = a_chart['namespace']
 
             output = helm_schema.format(appname=appname, name=name)
@@ -300,6 +307,37 @@ class FluxApplication:
         init_file = plugin_dir + '/' + appname + '/helm/__init__.py'
         open(init_file, 'w').close()
 
+        # Generate Kustomize files
+        try:
+            with open(kustomize_template, 'r') as f:
+                kustomize_schema = f.read()
+        except IOError:
+            print('File %s not found' % kustomize_template)
+            return False
+        kustomize_file = plugin_dir + '/' + appname + '/kustomize/kustomize_' + self.APP_NAME_WITH_UNDERSCORE + '.py'
+        output = kustomize_schema.format(appname=appname, appnameStriped=self.APP_NAME_CAMEL_CASE)
+
+        with open(kustomize_file, "w") as f:
+            f.write(output)
+
+        init_file = plugin_dir + '/' + appname + '/kustomize/__init__.py'
+        open(init_file, 'w').close()
+
+        # Generate Lifecycle files
+        try:
+            with open(lifecycle_template, 'r') as f:
+                lifecycle_schema = f.read()
+        except IOError:
+            print('File %s not found' % lifecycle_template)
+            return False
+        lifecycle_file = plugin_dir + '/' + appname + '/lifecycle/lifecycle_' + self.APP_NAME_WITH_UNDERSCORE + '.py'
+        output = lifecycle_schema.format(appnameStriped=self.APP_NAME_CAMEL_CASE)
+
+        with open(lifecycle_file, "w") as f:
+            f.write(output)
+
+        init_file = plugin_dir + '/' + appname + '/lifecycle/__init__.py'
+        open(init_file, 'w').close()
 
         # Generate setup.py
         setupPy_file = plugin_dir + '/setup.py'
@@ -309,7 +347,46 @@ class FluxApplication:
             f.write(file)
 
         # Generate setup.cfg file
+        try:
+            with open(setup_template, 'r') as f:
+                setup_schema = f.read()
+        except IOError:
+            print('File %s not found' % setup_template)
+            return False
         setupCfg_file = plugin_dir + '/setup.cfg'
+        with open(setupCfg_file, 'a') as f:
+            # substitute values
+            for line in setup_schema:
+                # substitute template values to manifest values
+                out_line, substituted = self._substitute_values(line, self._plugin_setup["options"])
+                if not substituted:
+                    # substitute template blocks to manifest blocks
+                    out_line = self._substitute_blocks(line, self._plugin_setup["options"])
+                f.write(out_line)
+        
+        output = setup_schema.format(
+            foldername = self._flux_manifest['appName'].replace(" ", "-"),
+            appname = self._flux_manifest['appName'],
+            author = self._plugin_setup['author'],
+            authoremail = self._plugin_setup['author-email'],
+            url = self._plugin_setup['url'],
+            appnameunderscore = self.APP_NAME_WITH_UNDERSCORE)
+        with open(setupCfg_file, "w") as f:
+            f.write(output)
+        
+        cont = 1
+        for idx in range(len(chart)):
+            a_chart = chart[idx]
+            output = "    00" + str(cont) + "_" + a_chart["name"] + " = " + self._flux_manifest['appName'].replace(" ", "-") + ".helm." + a_chart['name'] + ":" + a_chart['name'].replace('-', ' ').title().replace(' ','') + "Helm\n"
+            with open(setupCfg_file, "a") as f:
+                f.write(output)
+            cont += 1
+        
+        outputfinal = "\n[bdist_wheel]\nuniversal = 1"
+        with open(setupCfg_file, "a") as f:
+            f.write(outputfinal)
+
+
 
 
         init_file = plugin_dir + '/__init__.py'
@@ -339,6 +416,8 @@ class FluxApplication:
         self._flux_manifest['outputPluginDir'] = output_dir + '/plugins'
         self._flux_manifest['outputHelmDir'] = output_dir + '/plugins/' + self._flux_manifest['appName'].replace(" ", "-") + '/helm/'
         self._flux_manifest['outputCommonDir'] = output_dir + '/plugins/' + self._flux_manifest['appName'].replace(" ", "-") + '/common/'
+        self._flux_manifest['outputKustomizeDir'] = output_dir + '/plugins/' + self._flux_manifest['appName'].replace(" ", "-") + '/kustomize/'
+        self._flux_manifest['outputLifecycleDir'] = output_dir + '/plugins/' + self._flux_manifest['appName'].replace(" ", "-") + '/lifecycle/'
 
         if not os.path.exists(self._flux_manifest['outputPluginDir']):
             os.makedirs(self._flux_manifest['outputPluginDir'])
@@ -346,7 +425,67 @@ class FluxApplication:
             os.makedirs(self._flux_manifest['outputHelmDir'])
         if not os.path.exists(self._flux_manifest['outputCommonDir']):
             os.makedirs(self._flux_manifest['outputCommonDir'])
+        if not os.path.exists(self._flux_manifest['outputKustomizeDir']):
+            os.makedirs(self._flux_manifest['outputKustomizeDir'])
+        if not os.path.exists(self._flux_manifest['outputLifecycleDir']):
+            os.makedirs(self._flux_manifest['outputLifecycleDir'])
 
+
+    def _gen_md5(self, in_file):
+        with open(in_file, 'rb') as f:
+            out_md5 = hashlib.md5(f.read()).hexdigest()
+        return out_md5
+
+
+    def _gen_plugin_wheels(self):
+        dirplugins = self._flux_manifest['outputPluginDir']
+        dirpluginapp = dirplugins + "/" + self._flux_manifest['appName'].replace(" ", "-")
+
+        command = [
+            "python3",
+            f"{dirplugins}/setup.py",
+            "bdist_wheel",
+            "--universal",
+            "-d",
+            dirpluginapp]
+        
+        try:
+            result = subprocess.check_output(command, stderr=subprocess.STDOUT)
+            print(result)
+        except:
+            return False
+        
+        return True
+
+    # Sub-process of app generation
+    # generate application checksum file and tarball
+    #
+    def _gen_checksum_and_app_tarball(self):
+        store_cwd = os.getcwd()
+        os.chdir(self._flux_manifest['outputDir'])
+        # gen checksum
+        # check checksum file existance
+        checksum_file = 'checksum.md5'
+        if os.path.exists(checksum_file):
+            os.remove(checksum_file)
+        app_files = []
+        for parent, dirnames, filenames in os.walk('./'):
+            for filename in filenames:
+                app_files.append(os.path.join(parent, filename))
+        with open(checksum_file, 'a') as f:
+            for target_file in app_files:
+                f.write(self._gen_md5(target_file) + ' ' + target_file + '\n')
+        app_files.append('./' + checksum_file)
+
+        # gen application tarball
+        tarname = self._flux_manifest['appName'] + '-' + self._flux_manifest['appVersion'] + '.tgz'
+        t = tarfile.open(tarname, 'w:gz')
+        for target_file in app_files:
+            t.add(target_file)
+        t.close()
+        os.chdir(store_cwd)
+        return tarname
+    
 
     def gen_app(self, output_dir, overwrite):
 
@@ -369,13 +508,29 @@ class FluxApplication:
             print('FluxCCD manifest generation failed!')
             return ret
 
-
         ret = self._gen_plugins()
         if ret:
             print('Plugins generated!')
         else:
             print('Plugins generation failed!')
             return ret
+        
+        ret = self._gen_plugin_wheels()
+        if ret:
+            print('Plugin wheels generated!')
+        else:
+            print('Plugin wheels generation failed!')
+            return ret
+
+        ret = self._gen_checksum_and_app_tarball()
+        if ret:
+            print('Checksum generated!')
+            print('App tarball generated at %s/%s' % (self._flux_manifest['outputDir'], ret))
+            print('')
+        else:
+            print('Checksum and App tarball generation failed!')
+            return ret
+
 
     def write_app_metadata(self):
         """
@@ -386,6 +541,7 @@ class FluxApplication:
         yml_data['app_version'] = self._flux_manifest['appVersion']
         with open('metadata.yaml', 'w') as f:
             yaml.dump(yml_data, f, Dumper=yaml.SafeDumper)
+
 
     def write_app_setup(self):
         yml_data = parse_yaml('app_manifest.yaml')['setupFile-config']
@@ -422,6 +578,8 @@ class FluxApplication:
                 # * discutir com o Daniel se devemos deixar possibilidade do usuário escrever os valores default ou não
                 with open(f'./{self._flux_manifest.appName}/plugins/setup.cfg', 'w') as f:
                     f.write(out)
+
+
 def parse_yaml(yaml_in) -> dict:
     yaml_data=dict()
     try:

@@ -72,20 +72,22 @@ metadataFile-config: # LEAVE EMPTY
 # if you wish to see an setup.cfg example, please see the link
 # https://opendev.org/starlingx/app-dell-storage/src/branch/master/python3-k8sapp-dell-storage/k8sapp_dell_storage/setup.cfg
 setupFile-config: # LEAVE EMPTY
-  metadata:  # LEAVE EMPTY
-    name: # leave empty for default
-    summary:  # required
-    author:  # required
-    author-email: # required
-    url: # required
-    classifier: # requireds
-  options: # LEAVE EMPTY
-    install_requires: # required
-  files: # LEAVE EMPTY
-    packages: # leave empty for default
-  global: # LEAVE EMPTY
-    setup-hooks: # leave empty for default
-    systemconfig.helm_applications: # leave empty for default
-    systemconfig.helm_plugins.poc_starlingx: # leave empty for default
-  bdist_wheel: # LEAVE EMPTYs
-    universal: # leave empty for default
+  #metadata:  # LEAVE EMPTY
+  #name: # leave empty for default
+  #summary:  # required
+  author: Daniel # required
+  author-email: Daniel@encora.com # required
+  url: Daniel.com # required
+  #classifier: # requireds
+  options:
+    install_requires:
+      requests~=2.31.0
+      matplotlib~=3.7.1
+  # files: # LEAVE EMPTY
+  #   packages: # leave empty for default
+  # global: # LEAVE EMPTY
+  #   setup-hooks: # leave empty for default
+  #   systemconfig.helm_applications: # leave empty for default
+  #   systemconfig.helm_plugins.poc_starlingx: # leave empty for default
+  # bdist_wheel: # LEAVE EMPTYs
+  #   universal: # leave empty for default

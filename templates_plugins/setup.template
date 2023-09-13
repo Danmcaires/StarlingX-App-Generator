@@ -1,9 +1,9 @@
 [metadata]
 name = {foldername}
 summary = StarlingX sysinv extensions for {appname}
-author = 
-author-email = 
-url = 
+author = {author}
+author-email = {authoremail} 
+url = {url}
 classifier =
     Operating System :: OS Independent
     License :: OSI Approved :: MIT License
@@ -11,7 +11,7 @@ classifier =
 
 [options]
 install_requires =
-
+    @INSTALL_REQUIRES|2@
 
 [files]
 packages =
@@ -23,11 +23,6 @@ setup-hooks =
 
 [entry_points]
 systemconfig.helm_applications =
-    {appname} = systemconfig.helm_plugins.{appname}
+    {appname} = systemconfig.helm_plugins.{appnameunderscore}
 
-systemconfig.helm_plugins.poc_starlingx =
-    001_{appname} = {foldername}.helm.{name}:{cleanedname}Helm
-
-
-[bdist_wheel]
-universal = 1
+systemconfig.helm_plugins.{appnameunderscore} =
