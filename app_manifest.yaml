@@ -71,23 +71,17 @@ metadataFile-config: # LEAVE EMPTY
 ## App Setup Configuration
 # if you wish to see an setup.cfg example, please see the link
 # https://opendev.org/starlingx/app-dell-storage/src/branch/master/python3-k8sapp-dell-storage/k8sapp_dell_storage/setup.cfg
+# if you wish to understand and fill this file with more options, please visit: https://setuptools.pypa.io/en/latest/userguide/declarative_config.html
 setupFile-config: # LEAVE EMPTY
-  #metadata:  # LEAVE EMPTY
-  #name: # leave empty for default
-  #summary:  # required
-  author: Daniel # required
-  author-email: Daniel@encora.com # required
-  url: Daniel.com # required
-  #classifier: # requireds
+  metadata: # this level of indent represent setup tools labels, do not write on them
+      author: Daniel Caires # required
+      author-email: daniel.caires@encora.com # required
+      url: Daniel.com # required
+      classifier: # required
+        - "Operating System :: OS Independent"
+        - "License :: OSI Approved :: MIT License"
+        - "Programming Language :: Python :: 3"
   options:
     install_requires:
-      requests~=2.31.0
-      matplotlib~=3.7.1
-  # files: # LEAVE EMPTY
-  #   packages: # leave empty for default
-  # global: # LEAVE EMPTY
-  #   setup-hooks: # leave empty for default
-  #   systemconfig.helm_applications: # leave empty for default
-  #   systemconfig.helm_plugins.poc_starlingx: # leave empty for default
-  # bdist_wheel: # LEAVE EMPTYs
-  #   universal: # leave empty for default
+      - "requests~=2.31.0"
+      - "matplotlib~=3.7.1"
