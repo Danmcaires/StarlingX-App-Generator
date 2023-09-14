@@ -33,9 +33,9 @@ class FluxApplication:
         self._flux_manifest = {}
 
         # Initialize manifest
-        self._flux_manifest= app_data['appManifestFile-config']
+        self._flux_manifest = app_data['appManifestFile-config']
         self.APP_NAME = self._flux_manifest['appName']
-        self.APP_NAME_WITH_UNDERSCORE = self._flux_manifest['appName'].replace('-', '_').replace(' ', '_')
+        self.APP_NAME_WITH_UNDERSCORE = self._flux_manifest['appName'].replace('-', '_')
         self.APP_NAME_CAMEL_CASE = self._flux_manifest['appName'].replace('-', ' ').title().replace(' ', '')
 
         # Initialize chartgroup
@@ -499,10 +499,10 @@ class FluxApplication:
             os.makedirs(self._flux_manifest['outputLifecycleDir'])
 
 
-    def _gen_md5(self, in_file):
+    def _gen_sha256(self, in_file):
         with open(in_file, 'rb') as f:
-            out_md5 = hashlib.md5(f.read()).hexdigest()
-        return out_md5
+            out_sha256 = hashlib.sha256(f.read()).hexdigest()
+        return out_sha256
 
 
     def _gen_plugin_wheels(self):
@@ -534,7 +534,7 @@ class FluxApplication:
 
         dirs = [
             f'{APP_GEN_PY_PATH}/build/',
-            f'{APP_GEN_PY_PATH}/{self.APP_NAME_WITH_UNDERSCORE}.egg-info/']
+            f'{APP_GEN_PY_PATH}/k8sapp_{self.APP_NAME_WITH_UNDERSCORE}.egg-info/']
         for dir in dirs:
             shutil.rmtree(dir)
 
@@ -548,16 +548,17 @@ class FluxApplication:
         os.chdir(self._flux_manifest['outputDir'])
         # gen checksum
         # check checksum file existance
-        checksum_file = 'checksum.md5'
+        checksum_file = 'checksum.sha256'
         if os.path.exists(checksum_file):
             os.remove(checksum_file)
         app_files = []
         for parent, dirnames, filenames in os.walk('./'):
             for filename in filenames:
-                app_files.append(os.path.join(parent, filename))
+                if filename[-3:] != '.py':
+                    app_files.append(os.path.join(parent, filename))
         with open(checksum_file, 'a') as f:
-            for target_file in app_files:
-                f.write(self._gen_md5(target_file) + ' ' + target_file + '\n')
+            for target_file in sorted(app_files):
+                f.write(self._gen_sha256(target_file) + ' ' + target_file + '\n')
         app_files.append('./' + checksum_file)
 
         # gen application tarball
