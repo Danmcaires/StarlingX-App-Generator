@@ -20,6 +20,7 @@ TEMP_USER_DIR = '/tmp/' + getpass.getuser() + '/'
 # TEMP_APP_DIR = TEMP_USER_DIR/appName
 TEMP_APP_DIR = ''
 APP_GEN_PY_PATH = os.path.split(os.path.realpath(__file__))[0]
+APP_MANIFEST_PATH = 'app_manifest.yaml'
 
 def to_camel_case(s):
     return s[0].lower() + s.title().replace('_','')[1:] if s else s
@@ -348,6 +349,7 @@ class FluxApplication:
 
         # Generate setup.cfg file
         self.write_app_setup()
+        self.write_app_metadata()
 
         init_file = plugin_dir + '/__init__.py'
         open(init_file, 'w').close()
@@ -496,11 +498,13 @@ class FluxApplication:
         """
         gets the keys and values defined in the app-manifest.yaml and writes the metadata.yaml app file.
         """
-        yml_data = parse_yaml('app_manifest.yaml')['appManifestFile-config']
-        yml_data['app_name'] = self._flux_manifest['appName']
-        yml_data['app_version'] = self._flux_manifest['appVersion']
-        with open('metadata.yaml', 'w') as f:
-            yaml.dump(yml_data, f, Dumper=yaml.SafeDumper)
+
+        yml_data = parse_yaml(APP_MANIFEST_PATH)['metadataFile-config']
+        app_name, app_version = self._flux_manifest['appName'], self._flux_manifest['appVersion']
+        with open('./poc-starlingx/metadata.yaml', 'w') as f:
+            f.write(f'app_name: {app_name}\napp_version: {app_version}\n')
+            if yml_data is not None:
+                yaml.safe_dump(yml_data, f)
 
     def write_app_setup(self):
         def split_and_format_value(value) -> str:
@@ -509,9 +513,17 @@ class FluxApplication:
             else:
                 return ''.join([f'\t{lin}\n' for lin in value])
 
-        yml_data = parse_yaml('app_manifest.yaml')['setupFile-config']
+        def expected_order(tup: tuple) -> int:
+            if tup[0] == 'name':
+                return 0
+            elif tup[0] == 'summary':
+                return 1
+            return 2
+
+        yml_data = parse_yaml(APP_MANIFEST_PATH)['setupFile-config']
         yml_data['metadata']['name'] = f'k8sapp-{self.APP_NAME}'
         yml_data['metadata']['summary'] = f'StarlingX sysinv extensions for {self.APP_NAME}'
+        yml_data['metadata'] = dict(sorted(yml_data['metadata'].items(), key=expected_order))
         out = ''
         for label in yml_data:
             out += f'[{label}]\n'
@@ -524,19 +536,19 @@ class FluxApplication:
                     out += f'{key} =\n'
                     out += split_and_format_value(val)
             out += '\n'
-        charts_data = parse_yaml('app_manifest.yaml')['appManifestFile-config']['chart']
+        charts_data = parse_yaml(APP_MANIFEST_PATH)['appManifestFile-config']['chart']
         print(charts_data[0])
         plugins_names = []
         for dic in charts_data:
             plugins_names.append(dic['name'])
         out += f'[files]\npackages =\n\tk8sapp_{self.APP_NAME_WITH_UNDERSCORE}\n\n'
         out += '[global]\nsetup-hooks =\n\tpbr.hooks.setup_hook\n\n'
-        out += '[entry_points]\nsystemconfig.helm_applications =\n' \
+        out += '[entry_points]\nsystemconfig.helm_applications =\n\t' \
                f'{self.APP_NAME} = systemconfig.helm_plugins.{self.APP_NAME_WITH_UNDERSCORE}\n\n' \
                f'systemconfig.helm_plugins.{self.APP_NAME_WITH_UNDERSCORE} =\n'
         print(plugins_names)
         for i, plug in enumerate(plugins_names):
-            out += f'\t{i+1:03d}_{plug} = k8sapp.{self.APP_NAME_WITH_UNDERSCORE}.helm.{plug.replace("-","_")}'
+            out += f'\t{i+1:03d}_{plug} = k8sapp_{self.APP_NAME_WITH_UNDERSCORE}.helm.{plug.replace("-","_")}'
             out += f':{plug.replace("-", " ").title().replace(" ", "")}Helm\n'
         out += '\n'
         out += 'systemconfig.fluxcd.kustomize_ops =\n' \
