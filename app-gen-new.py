@@ -15,7 +15,7 @@ SCHEMA_COMMON_TEMPLATE = 'templates_plugins/common.template'
 SCHEMA_HELM_TEMPLATE = 'templates_plugins/helm.template'
 SCHEMA_KUSTOMIZE_TEMPLATE = 'templates_plugins/kustomize.template'
 SCHEMA_LIFECYCLE_TEMPLATE = 'templates_plugins/lifecycle.template'
-TEMP_USER_DIR = '/tmp/' + getpass.getuser() + '/'
+TEMP_USER_DIR = '/tmp/'
 # Temp app work dir to hold git repo and upstream tarball
 # TEMP_APP_DIR = TEMP_USER_DIR/appName
 TEMP_APP_DIR = ''
@@ -54,6 +54,122 @@ class FluxApplication:
         return self._flux_manifest['appName']
 
 
+    def _package_helm_chart(self, chart):
+        path = chart['path']
+        
+        # lint helm chart
+        cmd_lint = ['helm', 'lint', path]
+        subproc = subprocess.run(cmd_lint, env=os.environ.copy(), \
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if subproc.returncode == 0:
+            print(str(subproc.stdout, encoding = 'utf-8'))
+        else:
+            print(str(subproc.stderr, encoding = 'utf-8'))
+            return False
+
+        # package helm chart
+        cmd_package = ['helm', 'package', path, \
+                '--destination=' + self._flux_manifest['outputChartDir']]
+        subproc = subprocess.run(cmd_package, env=os.environ.copy(), \
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if subproc.returncode == 0:
+            output = str(subproc.stdout, encoding = 'utf-8')
+            print(output)
+            # capture tarball name
+            for words in output.split('/'):
+                if 'tgz' in words:
+                    chart['tarballName'] = words.rstrip('\n')
+        else:
+            print(subproc.stderr)
+            return False
+        return True
+
+
+    # Sub-process of app generation
+    # lint and package helm chart
+    # TODO: sub-chart dependency check
+    #
+    def _gen_helm_chart_tarball(self, chart):
+        ret = False
+        path = ''
+        print('Processing chart %s...' % chart['name'])
+        # check pathtype of the chart
+        if chart['_pathType'] == 'git':
+            gitname = ''
+            # download git
+            if not os.path.exists(TEMP_APP_DIR):
+                os.makedirs(TEMP_APP_DIR)
+            # if the git folder exists, check git name and use that folder
+            # otherwise git clone from upstream
+            if not os.path.exists(TEMP_APP_DIR + chart['_gitname']):
+                saved_pwd = os.getcwd()
+                os.chdir(TEMP_APP_DIR)
+                cmd = ['git', 'clone', chart['path']]
+                subproc = subprocess.run(cmd, env=os.environ.copy(), \
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                if subproc.returncode != 0:
+                    output = str(subproc.stderr, encoding = 'utf-8')
+                    print(output)
+                    print('Error: git clone %s failed' % chart['_gitname'])
+                    os.chdir(saved_pwd)
+                    return False
+                os.chdir(saved_pwd)
+            else:
+                # git pull to ensure folder up-to-date
+                saved_pwd = os.getcwd()
+                os.chdir(TEMP_APP_DIR + chart['_gitname'])
+                cmd = ['git', 'pull']
+                subproc = subprocess.run(cmd, env=os.environ.copy(), \
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                if subproc.returncode != 0:
+                    output = str(subproc.stderr, encoding = 'utf-8')
+                    print(output)
+                    print('Error: git pull for %s failed' % chart['_gitname'])
+                    os.chdir(saved_pwd)
+                    return False
+                os.chdir(saved_pwd)
+            path = TEMP_APP_DIR + chart['_gitname'] + '/' + chart['subpath']
+        elif chart['_pathType'] == 'tarball':
+            if not os.path.exists(TEMP_APP_DIR):
+                os.makedirs(TEMP_APP_DIR)
+            try:
+                # check whether it's a url or local tarball
+                if not os.path.exists(chart['path']):
+                    # download tarball
+                    tarpath = TEMP_APP_DIR + chart['_tarname'] + '.tgz'
+                    if not os.path.exists(tarpath):
+                        res = request.urlopen(chart['path'])
+                        with open(tarpath, 'wb') as f:
+                            f.write(res.read())
+                else:
+                    tarpath = chart['path']
+                # extract tarball
+                chart_tar = tarfile.open(tarpath, 'r:gz')
+                chart_files = chart_tar.getnames()
+                # get tar arcname for packaging helm chart process
+                # TODO: compatible with the case that there is no arcname
+                chart['_tarArcname'] = chart_files[0].split('/')[0]
+                if not os.path.exists(chart['_tarArcname']):
+                    for chart_file in chart_files:
+                        chart_tar.extract(chart_file, TEMP_APP_DIR)
+                chart_tar.close()
+            except Exception as e:
+                print('Error: %s' % e)
+                return False
+            path = TEMP_APP_DIR + chart['_tarArcname'] + '/' + chart['subpath']
+        elif chart['_pathType'] == 'dir':
+            path = chart['path']
+
+        # update chart path
+        # remove ending '/'
+        chart['path'] = path.rstrip('/')
+        # lint and package
+        ret = self._package_helm_chart(chart)
+
+        return ret
+
+
+    
     # pyyaml does not support writing yaml block with initial indent
     # add initial indent for yaml block substitution
     def _write_yaml_to_manifest(self, key, src, init_indent):
@@ -261,7 +377,7 @@ class FluxApplication:
         lifecycle_template = APP_GEN_PY_PATH + '/' + SCHEMA_LIFECYCLE_TEMPLATE
         setup_template = APP_GEN_PY_PATH + '/templates_plugins/setup.template'
 
-        appname = self._flux_manifest['appName'].replace(" ", "-")
+        appname = self.APP_NAME_WITH_UNDERSCORE
         namespace = self._flux_manifest['namespace']
         name = self._flux_chart[0]['name']
 
@@ -294,7 +410,7 @@ class FluxApplication:
         for idx in range(len(chart)):
             a_chart = chart[idx]
 
-            helm_file = plugin_dir + '/' + appname + '/helm/' + a_chart['name'] + '.py'
+            helm_file = plugin_dir + '/' + appname + '/helm/' + a_chart['name'].replace(" ", "_").replace("-", "_") + '.py'
 
             name = a_chart['name'].replace('-', ' ').title().replace(' ','')
             namespace = a_chart['namespace']
@@ -341,7 +457,7 @@ class FluxApplication:
 
         # Generate setup.py
         setupPy_file = plugin_dir + '/setup.py'
-        file = """import setuptools\n\nsetuptools.setup(\n    setup_requires=['pbr>=2.0.0'],\n    pbr=True)"""
+        file = f"""import setuptools\n\nsetuptools.setup(\n    setup_requires=['pbr>=2.0.0'],\n    pbr=True,\n    package_data={{"{self.APP_NAME}":["{self._flux_manifest['outputPluginDir']}/setup.cfg"]}})"""
 
         with open(setupPy_file, 'w') as f:
             f.write(file)
@@ -370,14 +486,16 @@ class FluxApplication:
             author = self.plugin_setup['author'],
             authoremail = self.plugin_setup['author-email'],
             url = self.plugin_setup['url'],
-            appnameunderscore = self.APP_NAME_WITH_UNDERSCORE)
+            appnameunderscore = self.APP_NAME_WITH_UNDERSCORE,
+            appnameStriped = self.APP_NAME_CAMEL_CASE)
+
         with open(setupCfg_file, "w") as f:
             f.write(output)
         
         cont = 1
         for idx in range(len(chart)):
             a_chart = chart[idx]
-            output = "    00" + str(cont) + "_" + a_chart["name"] + " = " + self._flux_manifest['appName'].replace(" ", "-") + ".helm." + a_chart['name'] + ":" + a_chart['name'].replace('-', ' ').title().replace(' ','') + "Helm\n"
+            output = "    00" + str(cont) + "_" + a_chart["name"] + " = " + self.APP_NAME_WITH_UNDERSCORE + ".helm." + a_chart['name'].replace("-", " ").replace(" ", "_") + ":" + a_chart['name'].replace('-', ' ').title().replace(' ','') + "Helm\n"
             with open(setupCfg_file, "a") as f:
                 f.write(output)
             cont += 1
@@ -397,10 +515,6 @@ class FluxApplication:
 
     def _create_flux_dir(self, output_dir):
 
-        self._flux_manifest['outputChartDir'] = output_dir + '/charts/'
-        self._flux_manifest['outputFluxDir'] = output_dir + '/fluxcd-manifests/'
-        self._flux_manifest['outputFluxBaseDir'] = output_dir + '/fluxcd-manifests/base/'
-
         if not os.path.exists(self._flux_manifest['outputChartDir']):
             os.makedirs(self._flux_manifest['outputChartDir'])
         if not os.path.exists(self._flux_manifest['outputFluxDir']):
@@ -411,13 +525,7 @@ class FluxApplication:
                 os.makedirs(self._flux_manifest['outputFluxManifestDir'])
 
 
-    def _create_plugins_dir(self, output_dir):
-
-        self._flux_manifest['outputPluginDir'] = output_dir + '/plugins'
-        self._flux_manifest['outputHelmDir'] = output_dir + '/plugins/' + self._flux_manifest['appName'].replace(" ", "-") + '/helm/'
-        self._flux_manifest['outputCommonDir'] = output_dir + '/plugins/' + self._flux_manifest['appName'].replace(" ", "-") + '/common/'
-        self._flux_manifest['outputKustomizeDir'] = output_dir + '/plugins/' + self._flux_manifest['appName'].replace(" ", "-") + '/kustomize/'
-        self._flux_manifest['outputLifecycleDir'] = output_dir + '/plugins/' + self._flux_manifest['appName'].replace(" ", "-") + '/lifecycle/'
+    def _create_plugins_dir(self):
 
         if not os.path.exists(self._flux_manifest['outputPluginDir']):
             os.makedirs(self._flux_manifest['outputPluginDir'])
@@ -439,7 +547,10 @@ class FluxApplication:
 
     def _gen_plugin_wheels(self):
         dirplugins = self._flux_manifest['outputPluginDir']
-        dirpluginapp = dirplugins + "/" + self._flux_manifest['appName'].replace(" ", "-")
+        dirpluginapp = dirplugins + "/" + self.APP_NAME_WITH_UNDERSCORE
+
+        shutil.copy(f'{dirplugins}/setup.cfg', f'./setup.cfg')
+
 
         command = [
             "python3",
@@ -450,11 +561,23 @@ class FluxApplication:
             dirpluginapp]
         
         try:
-            result = subprocess.check_output(command, stderr=subprocess.STDOUT)
-            print(result)
+            subprocess.call(command, stderr=subprocess.STDOUT)
         except:
             return False
         
+        files = [
+            f'{APP_GEN_PY_PATH}/ChangeLog',
+            f'{APP_GEN_PY_PATH}/AUTHORS',
+            f'{APP_GEN_PY_PATH}/setup.cfg']
+        for file in files:
+            os.remove(file)
+
+        dirs = [
+            f'{APP_GEN_PY_PATH}/build/',
+            f'{APP_GEN_PY_PATH}/{self.APP_NAME_WITH_UNDERSCORE}.egg-info/']
+        for dir in dirs:
+            shutil.rmtree(dir)
+
         return True
 
     # Sub-process of app generation
@@ -487,49 +610,76 @@ class FluxApplication:
         return tarname
     
 
-    def gen_app(self, output_dir, overwrite):
+    def gen_app(self, output_dir, overwrite, no_package, package_only):
 
         self._flux_manifest['outputDir'] = output_dir
-
-        if not os.path.exists(self._flux_manifest['outputDir']):
-            os.makedirs(self._flux_manifest['outputDir'])
-        elif overwrite:
-            shutil.rmtree(self._flux_manifest['outputDir'])
-        else:
-            print('Output folder %s exists, please remove it or use --overwrite.' % self._flux_manifest['outputDir'])
-
-        self._create_flux_dir(output_dir)
-        self._create_plugins_dir(output_dir)
-
-        ret = self._gen_fluxcd_manifest()
-        if ret:
-            print('FluxCD manifest generated!')
-        else:
-            print('FluxCCD manifest generation failed!')
-            return ret
-
-        ret = self._gen_plugins()
-        if ret:
-            print('Plugins generated!')
-        else:
-            print('Plugins generation failed!')
-            return ret
+        self._flux_manifest['outputChartDir'] = output_dir + '/charts/'
+        self._flux_manifest['outputFluxDir'] = output_dir + '/fluxcd-manifests/'
+        self._flux_manifest['outputFluxBaseDir'] = output_dir + '/fluxcd-manifests/base/'
         
-        ret = self._gen_plugin_wheels()
-        if ret:
-            print('Plugin wheels generated!')
-        else:
-            print('Plugin wheels generation failed!')
-            return ret
 
-        ret = self._gen_checksum_and_app_tarball()
-        if ret:
-            print('Checksum generated!')
-            print('App tarball generated at %s/%s' % (self._flux_manifest['outputDir'], ret))
-            print('')
-        else:
-            print('Checksum and App tarball generation failed!')
-            return ret
+        self._flux_manifest['outputPluginDir'] = output_dir + '/plugins'
+        self._flux_manifest['outputHelmDir'] = output_dir + '/plugins/' + self._flux_manifest['appName'].replace(" ", "_").replace("-", "_") + '/helm/'
+        self._flux_manifest['outputCommonDir'] = output_dir + '/plugins/' + self._flux_manifest['appName'].replace(" ", "_").replace("-", "_") + '/common/'
+        self._flux_manifest['outputKustomizeDir'] = output_dir + '/plugins/' + self._flux_manifest['appName'].replace(" ", "_").replace("-", "_") + '/kustomize/'
+        self._flux_manifest['outputLifecycleDir'] = output_dir + '/plugins/' + self._flux_manifest['appName'].replace(" ", "_").replace("-", "_") + '/lifecycle/'
+
+
+        if not package_only:
+
+            if not os.path.exists(self._flux_manifest['outputDir']):
+                os.makedirs(self._flux_manifest['outputDir'])
+            elif overwrite:
+                shutil.rmtree(self._flux_manifest['outputDir'])
+            else:
+                print('Output folder %s exists, please remove it or use --overwrite.' % self._flux_manifest['outputDir'])
+                sys.exit()
+            
+            self._create_flux_dir(output_dir)
+            self._create_plugins_dir()
+
+            ret = self._gen_fluxcd_manifest()
+            if ret:
+                print('FluxCD manifest generated!')
+            else:
+                print('FluxCCD manifest generation failed!')
+                return ret
+
+            ret = self._gen_plugins()
+            if ret:
+                print('Plugins generated!')
+            else:
+                print('Plugins generation failed!')
+                return ret
+            
+
+        
+        if not no_package:
+
+            for chart in self._flux_chart:
+                ret = self._gen_helm_chart_tarball(chart)
+                if ret:
+                    print('Helm chart %s tarball generated!' % chart['name'])
+                    print('')
+                else:
+                    print('Generating tarball for helm chart: %s error!' % chart['name'])
+                    return ret
+            
+            ret = self._gen_plugin_wheels()
+            if ret:
+                print('Plugin wheels generated!')
+            else:
+                print('Plugin wheels generation failed!')
+                return ret
+
+            ret = self._gen_checksum_and_app_tarball()
+            if ret:
+                print('Checksum generated!')
+                print('App tarball generated at %s/%s' % (self._flux_manifest['outputDir'], ret))
+                print('')
+            else:
+                print('Checksum and App tarball generation failed!')
+                return ret
 
 
     def write_app_metadata(self):
@@ -592,25 +742,79 @@ def parse_yaml(yaml_in) -> dict:
     return yaml_data
 
 
-def generate_app(file_in, out_folder, overwrite):
+def check_manifest(manifest_data):
+
+    for chart in manifest_data['appManifestFile-config']['chart']:
+        # check chart name
+        if 'name' not in chart:
+            print('Error: Chart attribute \'name\' is missing.')
+            return False
+
+        # check chart path, supporting: dir, git, tarball
+        if 'path' not in chart:
+            print('Error: Chart attribute \'path\' is missing in chart %s.' % chart['name'])
+            return False
+        else:
+            # TODO: To support branches/tags in git repo
+            if chart['path'].endswith('.git'):
+                if 'subpath' not in chart:
+                    print('Error: Chart attribute \'subpath\' is missing in chart %s.' % chart['name'])
+                    return False
+                chart['_pathType'] = 'git'
+                gitname = re.search('[^/]+(?=\.git$)',chart['path']).group()
+                if gitname:
+                    chart['_gitname'] = gitname
+                else:
+                    print('Error: Invalid \'path\' in chart %s.' % chart['name'])
+                    print('       only \'local dir\', \'.git\', \'.tar.gz\', \'.tgz\' are supported')
+                    return False
+            elif chart['path'].endswith('.tar.gz') or chart['path'].endswith('.tgz'):
+                if 'subpath' not in chart:
+                    print('Error: Chart attribute \'subpath\' is missing in chart %s.' % chart['name'])
+                    return False
+                chart['_pathType'] = 'tarball'
+                tarname = re.search('[^/]+(?=\.tgz)|[^/]+(?=\.tar\.gz)',chart['path']).group()
+                if tarname:
+                    chart['_tarname'] = tarname
+                else:
+                    print('Error: Invalid \'path\' in chart %s.' % chart['name'])
+                    print('       only \'local dir\', \'.git\', \'.tar.gz\', \'.tgz\' are supported')
+                    return False
+            else:
+                if not os.path.isdir(chart['path']):
+                    print('Error: Invalid \'path\' in chart %s.' % chart['name'])
+                    print('       only \'local dir\', \'.git\', \'.tar.gz\', \'.tgz\' are supported')
+                    return False
+                chart['_pathType'] = 'dir'
+
+    return True
+
+
+def generate_app(file_in, out_folder, overwrite, no_package, package_only):
     global TEMP_APP_DIR
     app_data = parse_yaml(file_in)
     if not app_data:
         print('Parse yaml error')
         return
+    if not check_manifest(app_data):
+        print('Application manifest is not valid')
+        return
     flux_manifest = FluxApplication(app_data)
     app_out = out_folder + '/' + flux_manifest.get_app_name()
-    flux_manifest.gen_app(app_out, overwrite)
+    flux_manifest.gen_app(app_out, overwrite, no_package, package_only)
 
 
 def main(argv):
     input_file = ''
     output_folder = '.'
     overwrite = False
+    package_only = False
+    no_package = False
     try:
         options, args = getopt.getopt(argv, 'hi:o:', \
-                ['help', 'input==', 'output==', 'overwrite'])
+                ['help', 'input==', 'output==', 'overwrite', 'no-package', 'package-only'])
     except getopt.GetoptError:
+        print('Error: Invalid argument')
         sys.exit()
     for option, value in options:
         if option in ('-h', '--help'):
@@ -623,6 +827,8 @@ def main(argv):
             print('    -i, --input yaml_file    generate app from yaml_file')
             print('    -o, --output folder      generate app to output folder')
             print('        --overwrite          overwrite the output dir')
+            print('        --no-package         does not create app tarball')
+            print('        --package-only       only creates tarball from dir')
             print('    -h, --help               this help')
         if option in ('--overwrite'):
             overwrite = True
@@ -630,12 +836,17 @@ def main(argv):
             input_file = value
         if option in ('-o', '--output'):
             output_folder = value
+        if option in ('--no-package'):
+            no_package = True
+        if option in ('--package-only'):
+            package_only = True
+
 
     if not os.path.isfile(os.path.abspath(input_file)):
         print('Error: input file not found')
         sys.exit()
     if input_file:
-        generate_app(os.path.abspath(input_file), os.path.abspath(output_folder), overwrite)
+        generate_app(os.path.abspath(input_file), os.path.abspath(output_folder), overwrite, no_package, package_only)
 
 
 if __name__ == '__main__':
