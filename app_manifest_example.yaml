@@ -8,7 +8,7 @@ appManifestFile-config: # LEAVE EMPTY
   chart:
     - name: poc-starlingx
       version: 1.5.2
-      path: ./helm-chart/
+      path: ./helm-chart/poc-starlingx/
       chartGroup: poc-starlingx-charts
   chartGroup:
     - name: poc-starlingx-charts

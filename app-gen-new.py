@@ -15,6 +15,7 @@ SCHEMA_COMMON_TEMPLATE = 'templates_plugins/common.template'
 SCHEMA_HELM_TEMPLATE = 'templates_plugins/helm.template'
 SCHEMA_KUSTOMIZE_TEMPLATE = 'templates_plugins/kustomize.template'
 SCHEMA_LIFECYCLE_TEMPLATE = 'templates_plugins/lifecycle.template'
+HELM_CHARTS_PATH = 'helm-chart'
 APP_GEN_PY_PATH = os.path.split(os.path.realpath(__file__))[0]
 
 def to_camel_case(s):
@@ -574,10 +575,11 @@ class FluxApplication:
     # 2 - Generate FluxCD Manifests
     # 3 - Generate application plugins
     # 4 - Generate application metadata
-    # 5 - Package helm-charts
-    # 6 - Package plugins in wheel format
-    # 7 - Generate checksum
-    # 8 - Package entire application
+    # 5 - Check Helm charts
+    # 6 - Package helm-charts
+    # 7 - Package plugins in wheel format
+    # 8 - Generate checksum
+    # 9 - Package entire application
     def gen_app(self, output_dir, overwrite, no_package, package_only):
 
         self._flux_manifest['outputDir'] = output_dir
@@ -634,8 +636,9 @@ class FluxApplication:
 
 
         if not no_package:
-
-            # 5 - Package helm-charts
+            # 5 - Check helm-charts
+            self.check_charts()
+            # 6 - Package helm-charts
             for chart in self._flux_chart:
                 ret = self._gen_helm_chart_tarball(chart)
                 if ret:
@@ -645,7 +648,7 @@ class FluxApplication:
                     print('Generating tarball for helm chart: %s error!' % chart['name'])
                     return ret
 
-            # 6 - Package plugins in wheel format
+            # 7 - Package plugins in wheel format
             ret = self._gen_plugin_wheels()
             if ret:
                 print('Plugin wheels generated!')
@@ -653,8 +656,8 @@ class FluxApplication:
                 print('Plugin wheels generation failed!')
                 return ret
 
-            # 7 - Generate checksum &&
-            # 8 - Package entire application
+            # 8 - Generate checksum &&
+            # 9 - Package entire application
             ret = self._gen_checksum_and_app_tarball()
             if ret:
                 print('Checksum generated!')
@@ -736,6 +739,39 @@ class FluxApplication:
         out += '[bdist_wheel]\nuniversal = 1'
         with open(f'./{self.APP_NAME}/plugins/setup.cfg', 'w') as f:
             f.write(out)
+    def check_charts(self):
+        charts = self._flux_chart
+        for chart in charts:
+            manifest_data = dict()
+            chart_file_data = dict()
+            manifest_data['name'], manifest_data['version'] = chart['name'], chart['version']
+            if 'appVersion' in chart:
+                manifest_data['app_version'] = charts['appVersion']
+            if chart['_pathType'] == 'dir':
+                chart_metadata_f = open(f'{chart["path"]}/Chart.yaml', 'r')
+                chart_file_lines = chart_metadata_f.readlines()
+                chart_file_lines = [l for l in chart_file_lines if l[0] != '#']
+                chart_metadata_f.close()
+                for line in chart_file_lines:
+                    line = line.rstrip('\n')
+                    line_data = line.split()
+                    if 'name:' in line_data:
+                        chart_file_data['name'] = line_data[-1]
+                    elif 'version:' in line_data:
+                        chart_file_data['version'] = line_data[-1]
+                    elif 'appVersion:' in line_data:
+                        chart_file_data['app_version'] = line_data[-1]
+            # To-do chart type different from dir
+            for key in manifest_data:
+                err_str = ''
+                if key not in chart_file_data:
+                    err_str = f'{key} is present in app-manifest.yaml but not in {chart["path"]}/Chart.yaml'
+                    print(manifest_data[key], chart_file_data[key])
+                    raise KeyError(err_str)
+                if manifest_data[key] != chart_file_data[key]:
+                    err_str = f'{key} has different values in app-manifest.yaml and {chart["path"]}/Chart.yaml'
+                    print(manifest_data[key], chart_file_data[key])
+                    raise ValueError(err_str)
 
 
 def parse_yaml(yaml_in) -> dict:
