@@ -675,7 +675,7 @@ class FluxApplication:
         file = self._flux_manifest['outputDir'] + '/metadata.yaml'
         try:
             with open(file, 'w') as f:
-                f.write(f'app_name: {app_name}\napp_version: {app_version}\n')
+                f.write(f'app_name: {app_name}\napp_version: {app_version}\nhelm_repo: stx-platform\n')
                 if yml_data is not None:
                     yaml.safe_dump(yml_data, f)
         except:

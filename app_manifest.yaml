@@ -21,7 +21,6 @@ appManifestFile-config: # LEAVE EMPTY
 metadataFile-config: # LEAVE EMPTY
   # the following configurations are optional
   # uncomment and configure properly the ones you need for your application metadata
-  helm_repo: stx-platform
   upgrades:
     auto_update: false
   #    update_failure_no_rollback: <true/false/yes/no>
