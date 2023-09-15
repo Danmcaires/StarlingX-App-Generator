@@ -23,8 +23,8 @@ spec:
     disableHooks: false
   valuesFrom:
     - kind: Secret
-    name: $NAME$-static-overrides
-    valuesKey: $NAME$-static-overrides.yaml
+      name: $NAME$-static-overrides
+      valuesKey: $NAME$-static-overrides.yaml
     - kind: Secret
-    name: $NAME$-system-overrides
-    valuesKey: $NAME$-system-overrides.yaml
+      name: $NAME$-system-overrides
+      valuesKey: $NAME$-system-overrides.yaml

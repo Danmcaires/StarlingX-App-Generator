@@ -15,12 +15,7 @@ SCHEMA_COMMON_TEMPLATE = 'templates_plugins/common.template'
 SCHEMA_HELM_TEMPLATE = 'templates_plugins/helm.template'
 SCHEMA_KUSTOMIZE_TEMPLATE = 'templates_plugins/kustomize.template'
 SCHEMA_LIFECYCLE_TEMPLATE = 'templates_plugins/lifecycle.template'
-TEMP_USER_DIR = '/tmp/' + getpass.getuser() + '/'
-# Temp app work dir to hold git repo and upstream tarball
-# TEMP_APP_DIR = TEMP_USER_DIR/appName
-TEMP_APP_DIR = ''
 APP_GEN_PY_PATH = os.path.split(os.path.realpath(__file__))[0]
-APP_MANIFEST_PATH = 'app_manifest.yaml'
 
 def to_camel_case(s):
     return s[0].lower() + s.title().replace('_','')[1:] if s else s
@@ -49,6 +44,10 @@ class FluxApplication:
 
         # Initialize setup data
         self.plugin_setup = app_data['setupFile-config']
+
+
+        # Initialize metadata
+        self.metadata = app_data['metadataFile-config']
 
 
     def get_app_name(self):
@@ -376,7 +375,6 @@ class FluxApplication:
         helm_template = APP_GEN_PY_PATH + '/' + SCHEMA_HELM_TEMPLATE
         kustomize_template = APP_GEN_PY_PATH + '/' + SCHEMA_KUSTOMIZE_TEMPLATE
         lifecycle_template = APP_GEN_PY_PATH + '/' + SCHEMA_LIFECYCLE_TEMPLATE
-        setup_template = APP_GEN_PY_PATH + '/templates_plugins/setup.template'
 
         appname = self.APP_NAME_WITH_UNDERSCORE
         namespace = self._flux_manifest['namespace']
@@ -458,14 +456,14 @@ class FluxApplication:
 
         # Generate setup.py
         setupPy_file = plugin_dir + '/setup.py'
-        file = f"""import setuptools\n\nsetuptools.setup(\n    setup_requires=['pbr>=2.0.0'],\n    pbr=True,\n    package_data={{"{self.APP_NAME}":["{self._flux_manifest['outputPluginDir']}/setup.cfg"]}})"""
+        file = f"""import setuptools\n\nsetuptools.setup(\n    setup_requires=['pbr>=2.0.0'],\n    pbr=True)"""
 
         with open(setupPy_file, 'w') as f:
             f.write(file)
 
         # Generate setup.cfg file
         self.write_app_setup()
-        self.write_app_metadata()
+
 
         init_file = plugin_dir + '/__init__.py'
         open(init_file, 'w').close()
@@ -554,7 +552,7 @@ class FluxApplication:
         app_files = []
         for parent, dirnames, filenames in os.walk('./'):
             for filename in filenames:
-                if filename[-3:] != '.py':
+                if filename[-3:] != '.py' and filename[-4:] != '.cfg':
                     app_files.append(os.path.join(parent, filename))
         with open(checksum_file, 'a') as f:
             for target_file in sorted(app_files):
@@ -571,6 +569,15 @@ class FluxApplication:
         return tarname
     
 
+    # Function to call all process fot the creation of the app tarball
+    # 1 - Create application directories
+    # 2 - Generate FluxCD Manifests
+    # 3 - Generate application plugins
+    # 4 - Generate application metadata
+    # 5 - Package helm-charts
+    # 6 - Package plugins in wheel format
+    # 7 - Generate checksum
+    # 8 - Package entire application
     def gen_app(self, output_dir, overwrite, no_package, package_only):
 
         self._flux_manifest['outputDir'] = output_dir
@@ -588,6 +595,7 @@ class FluxApplication:
 
         if not package_only:
 
+            # 1 - Create application directories
             if not os.path.exists(self._flux_manifest['outputDir']):
                 os.makedirs(self._flux_manifest['outputDir'])
             elif overwrite:
@@ -599,6 +607,7 @@ class FluxApplication:
             self._create_flux_dir(output_dir)
             self._create_plugins_dir()
 
+            # 2 - Generate FluxCD Manifests
             ret = self._gen_fluxcd_manifest()
             if ret:
                 print('FluxCD manifest generated!')
@@ -606,6 +615,7 @@ class FluxApplication:
                 print('FluxCCD manifest generation failed!')
                 return ret
 
+            # 3 - Generate application plugins
             ret = self._gen_plugins()
             if ret:
                 print('Plugins generated!')
@@ -613,10 +623,19 @@ class FluxApplication:
                 print('Plugins generation failed!')
                 return ret
 
+            # 4 - Generate application metadata
+            ret = self._gen_metadata()
+            if ret:
+                print('Metadata generated!')
+            else:
+                print('Metadata generation failed!')
+                return ret
+
 
 
         if not no_package:
 
+            # 5 - Package helm-charts
             for chart in self._flux_chart:
                 ret = self._gen_helm_chart_tarball(chart)
                 if ret:
@@ -626,6 +645,7 @@ class FluxApplication:
                     print('Generating tarball for helm chart: %s error!' % chart['name'])
                     return ret
 
+            # 6 - Package plugins in wheel format
             ret = self._gen_plugin_wheels()
             if ret:
                 print('Plugin wheels generated!')
@@ -633,6 +653,8 @@ class FluxApplication:
                 print('Plugin wheels generation failed!')
                 return ret
 
+            # 7 - Generate checksum &&
+            # 8 - Package entire application
             ret = self._gen_checksum_and_app_tarball()
             if ret:
                 print('Checksum generated!')
@@ -643,17 +665,24 @@ class FluxApplication:
                 return ret
 
 
-    def write_app_metadata(self):
+    def _gen_metadata(self):
         """
-        gets the keys and values defined in the app-manifest.yaml and writes the metadata.yaml app file.
+        gets the keys and values defined in the input yaml and writes the metadata.yaml app file.
         """
 
-        yml_data = parse_yaml(APP_MANIFEST_PATH)['metadataFile-config']
+        yml_data = self.metadata
         app_name, app_version = self._flux_manifest['appName'], self._flux_manifest['appVersion']
-        with open('./poc-starlingx/metadata.yaml', 'w') as f:
-            f.write(f'app_name: {app_name}\napp_version: {app_version}\n')
-            if yml_data is not None:
-                yaml.safe_dump(yml_data, f)
+        file = self._flux_manifest['outputDir'] + '/metadata.yaml'
+        try:
+            with open(file, 'w') as f:
+                f.write(f'app_name: {app_name}\napp_version: {app_version}\n')
+                if yml_data is not None:
+                    yaml.safe_dump(yml_data, f)
+        except:
+            return False
+        
+        return True
+
 
     def write_app_setup(self):
         def split_and_format_value(value) -> str:
@@ -669,7 +698,7 @@ class FluxApplication:
                 return 1
             return 2
 
-        yml_data = parse_yaml(APP_MANIFEST_PATH)['setupFile-config']
+        yml_data = self.plugin_setup
         yml_data['metadata']['name'] = f'k8sapp-{self.APP_NAME}'
         yml_data['metadata']['summary'] = f'StarlingX sysinv extensions for {self.APP_NAME}'
         yml_data['metadata'] = dict(sorted(yml_data['metadata'].items(), key=expected_order))
@@ -685,8 +714,7 @@ class FluxApplication:
                     out += f'{key} =\n'
                     out += split_and_format_value(val)
             out += '\n'
-        charts_data = parse_yaml(APP_MANIFEST_PATH)['appManifestFile-config']['chart']
-        print(charts_data[0])
+        charts_data = self._flux_chart
         plugins_names = []
         for dic in charts_data:
             plugins_names.append(dic['name'])
@@ -695,7 +723,6 @@ class FluxApplication:
         out += '[entry_points]\nsystemconfig.helm_applications =\n\t' \
                f'{self.APP_NAME} = systemconfig.helm_plugins.{self.APP_NAME_WITH_UNDERSCORE}\n\n' \
                f'systemconfig.helm_plugins.{self.APP_NAME_WITH_UNDERSCORE} =\n'
-        print(plugins_names)
         for i, plug in enumerate(plugins_names):
             out += f'\t{i+1:03d}_{plug} = k8sapp_{self.APP_NAME_WITH_UNDERSCORE}.helm.{plug.replace("-","_")}'
             out += f':{plug.replace("-", " ").title().replace(" ", "")}Helm\n'
@@ -726,6 +753,7 @@ def parse_yaml(yaml_in) -> dict:
 def check_manifest(manifest_data):
 
     for chart in manifest_data['appManifestFile-config']['chart']:
+        
         # check chart name
         if 'name' not in chart:
             print('Error: Chart attribute \'name\' is missing.')

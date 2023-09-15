@@ -3,22 +3,17 @@
 ## App Manifest Configuration
 appManifestFile-config: # LEAVE EMPTY
   appName: poc-starlingx
-  appVersion: 1.0.1
+  appVersion: 1.5.2
   namespace: default
   chart:
     - name: poc-starlingx
-      version: 1.0-1
-      path: ./helm-chart/
-      chartGroup: poc-starlingx-charts
-    - name: poc-starlingx-2
-      version: 1.0-1
+      version: 1.5.2
       path: ./helm-chart/
       chartGroup: poc-starlingx-charts
   chartGroup:
     - name: poc-starlingx-charts
       chart_names:
         - poc-starlingx
-        - poc-starlingx-2
 #################################################
 ## App Metadata Configuration
 # for further details about this file possible configurations please
@@ -26,8 +21,9 @@ appManifestFile-config: # LEAVE EMPTY
 metadataFile-config: # LEAVE EMPTY
   # the following configurations are optional
   # uncomment and configure properly the ones you need for your application metadata
-  #upgrades:
-  #  auto_update: <true/false/yes/no>
+  helm_repo: stx-platform
+  upgrades:
+    auto_update: false
   #    update_failure_no_rollback: <true/false/yes/no>
   #    from_versions:
   #      - <version.1>
@@ -46,10 +42,10 @@ metadataFile-config: # LEAVE EMPTY
   #      - <chart name>
   #      - <chart name>
   #      # ...
-  #maintain_attributes: <true|false>
-  #maintain_user_overrides: <true|false>
-  #behavior:
-  #      platform_managed_app: <true/false/yes/no>
+  maintain_attributes: true
+  maintain_user_overrides: true
+  behavior:
+        platform_managed_app: no
   #      desired_state: <uploaded/applied>
   #      evaluate_reapply: <string>
   #            after:
