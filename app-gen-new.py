@@ -377,7 +377,7 @@ class FluxApplication:
         kustomize_template = APP_GEN_PY_PATH + '/' + SCHEMA_KUSTOMIZE_TEMPLATE
         lifecycle_template = APP_GEN_PY_PATH + '/' + SCHEMA_LIFECYCLE_TEMPLATE
 
-        appname = self.APP_NAME_WITH_UNDERSCORE
+        appname = 'k8sapp_' + self.APP_NAME_WITH_UNDERSCORE
         namespace = self._flux_manifest['namespace']
         name = self._flux_chart[0]['name']
 
@@ -469,6 +469,10 @@ class FluxApplication:
         init_file = plugin_dir + '/__init__.py'
         open(init_file, 'w').close()
 
+
+        init_file = plugin_dir + '/' + appname + '/__init__.py'
+        open(init_file, 'w').close()
+
         return True
 
 
@@ -506,18 +510,18 @@ class FluxApplication:
 
     def _gen_plugin_wheels(self):
         dirplugins = self._flux_manifest['outputPluginDir']
-        dirpluginapp = dirplugins + "/" + self.APP_NAME_WITH_UNDERSCORE
 
-        shutil.copy(f'{dirplugins}/setup.cfg', f'./setup.cfg')
+        store_cwd = os.getcwd()
+        os.chdir(dirplugins)
 
 
         command = [
             "python3",
-            f"{dirplugins}/setup.py",
+            "setup.py",
             "bdist_wheel",
             "--universal",
             "-d",
-            dirpluginapp]
+            dirplugins]
         
         try:
             subprocess.call(command, stderr=subprocess.STDOUT)
@@ -525,17 +529,18 @@ class FluxApplication:
             return False
 
         files = [
-            f'{APP_GEN_PY_PATH}/ChangeLog',
-            f'{APP_GEN_PY_PATH}/AUTHORS',
-            f'{APP_GEN_PY_PATH}/setup.cfg']
+            f'{dirplugins}/ChangeLog',
+            f'{dirplugins}/AUTHORS']
         for file in files:
             os.remove(file)
 
         dirs = [
-            f'{APP_GEN_PY_PATH}/build/',
-            f'{APP_GEN_PY_PATH}/k8sapp_{self.APP_NAME_WITH_UNDERSCORE}.egg-info/']
+            f'{dirplugins}/build/',
+            f'{dirplugins}/k8sapp_{self.APP_NAME_WITH_UNDERSCORE}.egg-info/']
         for dir in dirs:
             shutil.rmtree(dir)
+
+        os.chdir(store_cwd)
 
         return True
 
@@ -589,10 +594,10 @@ class FluxApplication:
 
 
         self._flux_manifest['outputPluginDir'] = output_dir + '/plugins'
-        self._flux_manifest['outputHelmDir'] = output_dir + '/plugins/' + self._flux_manifest['appName'].replace(" ", "_").replace("-", "_") + '/helm/'
-        self._flux_manifest['outputCommonDir'] = output_dir + '/plugins/' + self._flux_manifest['appName'].replace(" ", "_").replace("-", "_") + '/common/'
-        self._flux_manifest['outputKustomizeDir'] = output_dir + '/plugins/' + self._flux_manifest['appName'].replace(" ", "_").replace("-", "_") + '/kustomize/'
-        self._flux_manifest['outputLifecycleDir'] = output_dir + '/plugins/' + self._flux_manifest['appName'].replace(" ", "_").replace("-", "_") + '/lifecycle/'
+        self._flux_manifest['outputHelmDir'] = output_dir + '/plugins/k8sapp_' + self._flux_manifest['appName'].replace(" ", "_").replace("-", "_") + '/helm/'
+        self._flux_manifest['outputCommonDir'] = output_dir + '/plugins/k8sapp_' + self._flux_manifest['appName'].replace(" ", "_").replace("-", "_") + '/common/'
+        self._flux_manifest['outputKustomizeDir'] = output_dir + '/plugins/k8sapp_' + self._flux_manifest['appName'].replace(" ", "_").replace("-", "_") + '/kustomize/'
+        self._flux_manifest['outputLifecycleDir'] = output_dir + '/plugins/k8sapp_' + self._flux_manifest['appName'].replace(" ", "_").replace("-", "_") + '/lifecycle/'
 
 
         if not package_only:

@@ -1,7 +1,7 @@
 # StarlingX Application Generation Tool
 
 The purpose of this tool is to generate StarlingX user applications in an easy
-way without stx build environment and armada manifest schema knowledge.
+way without stx build environment and FluxCD manifest schema knowledge.
 
 ## Pre-requisite
 
@@ -32,29 +32,35 @@ Refer to official [helm doc](https://helm.sh/docs/)
 A few essential fields needed to create the app, simplest one could be:
 
 ```
-appName: stx-app
-namespace: stx-app
-version: 1.0-1
-chart:
-- name: chart1
-  path: /path/to/chart1
-chartGroup:
-- name: chartgroup1
-  description: "This is the first chartgroup"
-  sequenced: true
-  chart_group:
-  - chart1
-manifest:
-  name: stx-app-manifest
-  releasePrefix: myprefix
-  chart_groups:
-  - chartgroup1
+appManifestFile-config:
+  appName: stx-app
+  appVersion: 1.0.1
+  namespace: default
+  chart:
+    - name: chart1
+      version: 1.0.1
+      path: /path/to/chart1
+      chartGroup: chartgroup1
+  chartGroup:
+    - name: chartgroup1
+      chart_names:
+        - chart1
+
+setupFile-config:
+  metadata: 
+      author: John Doe
+      author-email: john.doe@email.com
+      url: johndoe.com
+      classifier: # required
+        - "Operating System :: OS Independent"
+        - "License :: OSI Approved :: MIT License"
+        - "Programming Language :: Python :: 3"
 ```
-For more details, please refer to example.yaml
+For more details, please refer to app_manifest.yaml
 
-#### 3. Run app-gen.py
+#### 3. Run app-gen-new.py
 
-`$ python3 app-gen.py -i app_manifest.yaml [-o ./output] [--overwrite]`
+`$ python3 app-gen.py -i app_manifest.yaml [-o ./output] [--overwrite] [--no-package] [--package-only]`
 
 The application will be generated automatically along with the tarball located
 in the folder of your application name.

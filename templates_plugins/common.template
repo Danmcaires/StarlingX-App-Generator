@@ -1,6 +1,6 @@
 HELM_NS = "{namespace}"
 
-HELM_APP = "{appname}"
+HELM_APP = "{name}"
 
 HELM_CHART = "{name}"
 
