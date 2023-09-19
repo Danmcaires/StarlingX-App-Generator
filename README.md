@@ -6,10 +6,10 @@ way without stx build environment and FluxCD manifest schema knowledge.
 ## Pre-requisite
 
 1. Helm2 installed
-2. python3.5+
-3. pyyaml>=5.0.0 package
+2. python3.8
+3. pyyaml = 6.0.1 package
 
-`$ pip3 install pyyaml==5.1.2`
+`$ pip3 install pyyaml==6.0.1`
 
 ## 3 Steps to create a starlingx user app
 
@@ -62,5 +62,11 @@ For more details, please refer to app_manifest.yaml
 
 `$ python3 app-gen.py -i app_manifest.yaml [-o ./output] [--overwrite] [--no-package] [--package-only]`
 
-The application will be generated automatically along with the tarball located
-in the folder of your application name.
+* ``-i/--input`` Input app_manifest.yaml file
+* ``-o/--output`` Output folder, if none is passed the generator will create a folder 
+  with the app name in the current directory.
+* ``--overwrite`` Delete existing folder with the same name as the app name
+* ``--no-package`` Only creates the fluxcd manifest, the plugins and the
+  metadata file
+* ``--package-only`` Create the plugins wheels, sha256 file, helm-chart tarball 
+  and package the entire application into a tarball.
