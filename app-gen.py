@@ -587,17 +587,18 @@ class FluxApplication:
     
 
     # Function to call all process fot the creation of the app tarball
-    # 1 - Create application directories
-    # 2 - Generate FluxCD Manifests
-    # 3 - Generate application plugins
-    # 4 - Generate application metadata
-    # 5 - Check Helm charts
+    # 1 - Validate input file and helm chart data
+    # 2 - Create application directories
+    # 3 - Generate FluxCD Manifests
+    # 4 - Generate application plugins
+    # 5 - Generate application metadata
     # 6 - Package helm-charts
     # 7 - Package plugins in wheel format
     # 8 - Generate checksum
     # 9 - Package entire application
     def gen_app(self, output_dir, overwrite, no_package, package_only):
 
+        
         self._flux_manifest['outputDir'] = output_dir
         self._flux_manifest['outputChartDir'] = output_dir + '/charts/'
         self._flux_manifest['outputFluxDir'] = output_dir + '/fluxcd-manifests/'
@@ -610,10 +611,13 @@ class FluxApplication:
         self._flux_manifest['outputKustomizeDir'] = output_dir + '/plugins/k8sapp_' + self._flux_manifest['appName'].replace(" ", "_").replace("-", "_") + '/kustomize/'
         self._flux_manifest['outputLifecycleDir'] = output_dir + '/plugins/k8sapp_' + self._flux_manifest['appName'].replace(" ", "_").replace("-", "_") + '/lifecycle/'
 
-
+        # 1 - Validate input file and helm chart data
+        self.check_charts()
+      
         if not package_only:
 
-            # 1 - Create application directories
+            
+            # 2 - Create application directories
             if not os.path.exists(self._flux_manifest['outputDir']):
                 os.makedirs(self._flux_manifest['outputDir'])
             elif overwrite:
@@ -625,7 +629,7 @@ class FluxApplication:
             self._create_flux_dir(output_dir)
             self._create_plugins_dir()
 
-            # 2 - Generate FluxCD Manifests
+            # 3 - Generate FluxCD Manifests
             ret = self._gen_fluxcd_manifest()
             if ret:
                 print('FluxCD manifest generated!')
@@ -633,7 +637,7 @@ class FluxApplication:
                 print('FluxCCD manifest generation failed!')
                 return ret
 
-            # 3 - Generate application plugins
+            # 4 - Generate application plugins
             ret = self._gen_plugins()
             if ret:
                 print('Plugins generated!')
@@ -641,7 +645,7 @@ class FluxApplication:
                 print('Plugins generation failed!')
                 return ret
 
-            # 4 - Generate application metadata
+            # 5 - Generate application metadata
             ret = self._gen_metadata()
             if ret:
                 print('Metadata generated!')
@@ -652,8 +656,7 @@ class FluxApplication:
 
 
         if not no_package:
-            # 5 - Check helm-charts
-            self.check_charts()
+
             # 6 - Package helm-charts
             for chart in self._flux_chart:
                 ret = self._gen_helm_chart_tarball(chart)
@@ -755,28 +758,29 @@ class FluxApplication:
         out += '[bdist_wheel]\nuniversal = 1'
         with open(f'./{self.APP_NAME}/plugins/setup.cfg', 'w') as f:
             f.write(out)
+
+
     def check_charts(self):
         charts = self._flux_chart
         for chart in charts:
             manifest_data = dict()
             chart_file_data = dict()
             manifest_data['name'], manifest_data['version'] = chart['name'], chart['version']
-            if 'appVersion' in chart:
-                manifest_data['app_version'] = charts['appVersion']
             if chart['_pathType'] == 'dir':
                 chart_metadata_f = open(f'{chart["path"]}/Chart.yaml', 'r')
                 chart_file_lines = chart_metadata_f.readlines()
+                #print (f"\n\n\n\n{chart_file_lines}\n\n\n\n")
                 chart_file_lines = [l for l in chart_file_lines if l[0] != '#']
+                #print (f"\n\n\n\n{chart_file_lines}\n\n\n\n")
                 chart_metadata_f.close()
                 for line in chart_file_lines:
                     line = line.rstrip('\n')
                     line_data = line.split()
-                    if 'name:' in line_data:
+                    print (f"\n{line_data}\n")
+                    if 'name:' in line_data[0]:
                         chart_file_data['name'] = line_data[-1]
-                    elif 'version:' in line_data:
+                    elif 'version:' in line_data[0]:
                         chart_file_data['version'] = line_data[-1]
-                    elif 'appVersion:' in line_data:
-                        chart_file_data['app_version'] = line_data[-1]
             # To-do chart type different from dir
             for key in manifest_data:
                 err_str = ''
