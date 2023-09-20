@@ -769,14 +769,13 @@ class FluxApplication:
             if chart['_pathType'] == 'dir':
                 chart_metadata_f = open(f'{chart["path"]}/Chart.yaml', 'r')
                 chart_file_lines = chart_metadata_f.readlines()
-                #print (f"\n\n\n\n{chart_file_lines}\n\n\n\n")
                 chart_file_lines = [l for l in chart_file_lines if l[0] != '#']
-                #print (f"\n\n\n\n{chart_file_lines}\n\n\n\n")
                 chart_metadata_f.close()
                 for line in chart_file_lines:
                     line = line.rstrip('\n')
                     line_data = line.split()
-                    print (f"\n{line_data}\n")
+                    if not line_data:
+                        continue
                     if 'name:' in line_data[0]:
                         chart_file_data['name'] = line_data[-1]
                     elif 'version:' in line_data[0]:
