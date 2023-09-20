@@ -3,6 +3,14 @@
 The purpose of this tool is to generate StarlingX user applications in an easy
 way without stx build environment and FluxCD manifest schema knowledge.
 
+## Why deploy an application as a StarlingX application?
+If you plan to deploy an application that would benefit from integration with the StarlingX system state
+for making automatized configurations plus the benefits of a helmerized application and the CI/CD tools provided by
+FluxCD, then a StarlingX application may be the choice for you!
+
+But if your application does not need or would not have greater benefits by using the StarlingX system environment
+capabilities, then perhaps sticking only to Helm and FluxCD is enough for your use case.
+
 ## Pre-requisite
 
 1. Helm2 installed

@@ -66,7 +66,7 @@ metadataFile-config: # LEAVE EMPTY
 
 #################################################
 ## App Setup Configuration
-# if you wish to see an setup.cfg example, please see the link
+# if you wish to see a setup.cfg example, please see the link
 # https://opendev.org/starlingx/app-dell-storage/src/branch/master/python3-k8sapp-dell-storage/k8sapp_dell_storage/setup.cfg
 setupFile-config: # LEAVE EMPTY
   metadata:  # LEAVE EMPTY
