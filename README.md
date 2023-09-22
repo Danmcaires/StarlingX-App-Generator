@@ -19,6 +19,10 @@ capabilities, then perhaps sticking only to Helm and FluxCD is enough for your u
 
 `$ pip3 install pyyaml==6.0.1`
 
+## General Overview
+
+![app flowchart](/etc/app-gen-tool.jpeg)
+
 ## 3 Steps to create a starlingx user app
 
 #### 1. Prepare a helm chart(s)
