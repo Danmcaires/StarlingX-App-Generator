@@ -21,7 +21,7 @@ capabilities, then perhaps sticking only to Helm and FluxCD is enough for your u
 
 ## General Overview
 
-![app flowchart](/etc/app-gen-tool.jpeg)
+![app flowchart](/.etc/app-gen-tool.jpeg)
 
 ## 3 Steps to create a starlingx user app
 
