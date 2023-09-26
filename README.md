@@ -3,6 +3,12 @@
 The purpose of this tool is to generate a StarlingX App from a workload/app
 in an easy way without the complete StarlingX build environment.
 
+## TODO list
+
+- [ ] Remove the need for `appManifestFile-config.chartGroup.chart_names` in `app_manifest.yaml` since it can be
+inferred by `appManifestFile-config.chart.name[]`.
+  - [ ] Also remove the redundant chartGroup in the process.
+
 ## Why deploy an application as a StarlingX application?
 
 It's important to understand that any user workload can be deployed in many
