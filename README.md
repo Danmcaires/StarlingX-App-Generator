@@ -8,6 +8,8 @@ in an easy way without the complete StarlingX build environment.
 - [ ] Remove the need for `appManifestFile-config.chartGroup.chart_names` in `app_manifest.yaml` since it can be
 inferred by `appManifestFile-config.chart.name[]`.
   - [ ] Also remove the redundant chartGroup in the process.
+- [ ] Test what happens if we have a Helm chart that has a fixed container image instead of an overridable one.
+- [ ] Explain better why our generated system overrides is empty.
 
 ## Why deploy an application as a StarlingX application?
 
