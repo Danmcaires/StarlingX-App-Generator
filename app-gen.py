@@ -33,14 +33,19 @@ class FluxApplication:
         self.APP_NAME_WITH_UNDERSCORE = self._flux_manifest['appName'].replace('-', '_')
         self.APP_NAME_CAMEL_CASE = self._flux_manifest['appName'].replace('-', ' ').title().replace(' ', '')
 
-        # Initialize chartgroup
-        self._flux_chartgroup = app_data['appManifestFile-config']['chartGroup']
-        self._flux_chartgroup[0]['namespace'] = self._flux_manifest['namespace']
 
+        CHART_GROUP_NAME = self.APP_NAME + '-charts'
         # Initialize chart
         self._flux_chart = app_data['appManifestFile-config']['chart']
         for i in range(len(self._flux_chart)):
             self._flux_chart[i]['namespace'] = self._flux_manifest['namespace']
+            self._flux_chart[i]['chartGroup'] = CHART_GROUP_NAME
+
+        # Initialize chartgroup
+        self._flux_chart_group = dict()
+        self._flux_chart_group['name'] = CHART_GROUP_NAME
+        self._flux_chart_group['chart_names'] = [chart['name'] for chart in self._flux_chart]
+        self._flux_chart_group['namespace'] = self._flux_manifest['namespace']
 
         # Initialize setup data
         self.plugin_setup = app_data['setupFile-config']
@@ -247,7 +252,7 @@ class FluxApplication:
         manifest_kustomization_template = APP_GEN_PY_PATH + '/' + SCHEMA_MANIFEST_TEMPLATE + '/kustomization.template'
 
         manifest = self._flux_manifest
-        chartgroup = self._flux_chartgroup[0]
+        chartgroup = self._flux_chart_group
         chart = self._flux_chart
 
         # generate kustomization file
