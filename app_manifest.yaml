@@ -1,8 +1,6 @@
 ---
-#################################################
-# Please see the app_manifest_example.yaml to have an idea on how to fill this file
 ## App Manifest Configuration
-appManifestFile-config: # LEAVE EMPTY
+appManifestFile-config:
   appName: # required
   appVersion: # required
   namespace: # required
@@ -12,9 +10,9 @@ appManifestFile-config: # LEAVE EMPTY
       path: # required
 #################################################
 ## App Metadata Configuration
-# for further details about this file possible configurations please
+# for further details about possible configurations on this file, please
 # visit the link: https://wiki.openstack.org/wiki/StarlingX/Containers/StarlingXAppsInternals#metadata.yaml
-metadataFile-config: # LEAVE EMPTY
+metadataFile-config:
   # the following configurations are optional
   # uncomment and configure properly the ones you need for your application metadata
   #upgrades:
@@ -62,9 +60,9 @@ metadataFile-config: # LEAVE EMPTY
 ## App Setup Configuration
 # if you wish to see a setup.cfg example, please see the link
 # https://opendev.org/starlingx/app-dell-storage/src/branch/master/python3-k8sapp-dell-storage/k8sapp_dell_storage/setup.cfg
-setupFile-config: # LEAVE EMPTY
-  metadata:  # LEAVE EMPTY
-    author:  # required
+setupFile-config:
+  metadata:
+    author: # required
     author-email: # required
     url: # required
     classifier: # required
