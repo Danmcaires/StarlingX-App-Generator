@@ -31,7 +31,7 @@ ways to the Kubernetes cluster(s) that StarlingX manages:
 
 ## General Overview
 
-![app flowchart](/.etc/app-gen-tool.jpeg)
+![app flowchart](README/app-gen-tool.jpeg)
 
 ## 3 Steps to create a Starlingx App
 
@@ -110,21 +110,21 @@ https://github.com/Danmcaires/StarlingX-App-Generator (this is a temporary
 repository, all relevant info/code, if any, will be moved to official
 repositories by the end of this study).
 
-- [Prerequisites](#prerequisites)
-- [Generate the application](#generate-the-application)
-  - [App manifest configuration](#app-manifest-configuration)
-  - [Metadata File Configuration](#metadata-file-configuration)
-  - [App Setup configuration](#app-setup-configuration)
-- [Run the application](#run-the-application)
-  - [FluxCD Manifest](#fluxcd-manifest)
-  - [Plugins](#plugins)
-  - [Metadata](#metadata)
-  - [Tarballs](#tarballs)
-- [Customizing the application](#customizing-the-application)
-  - [FluxCD Manifest](#fluxcd-manifest-1)
-  - [Plugins](#plugins-1)
-  - [Other files](#other-files)
-  - [Packaging the application](#packaging-the-application)
+* [Deploy an application as a StarlingX app](#deploy-an-application-as-a-starlingx-app)
+  * [Prerequisites](#prerequisites)
+  * [Generate the StarlingX Application package](#generate-the-starlingx-application-package)
+    * [App manifest configuration](#app-manifest-configuration)
+    * [Metadata File Configuration](#metadata-file-configuration)
+    * [App Setup configuration](#app-setup-configuration)
+  * [Run the StarlingX App Generator](#run-the-starlingx-app-generator)
+    * [FluxCD Manifest](#fluxcd-manifest)
+    * [Plugins](#plugins)
+    * [Metadata](#metadata)
+    * [Tarballs](#tarballs)
+  * [Customizing the application](#customizing-the-application)
+    * [FluxCD Manifest](#fluxcd-manifest-1)
+    * [Plugins](#plugins-1)
+    * [Other files](#other-files)
 
 ## Prerequisites
 
@@ -144,9 +144,25 @@ git clone https://github.com/Danmcaires/StarlingX-App-Generator.git
 
 This is what you'll find in the root folder of the repository:
 
-> _NOTE_: TODO update image.
-
-![file-structure](BuildGuide/file-strucuture-1.png)
+```shell
+.
+├── app-gen.py
+├── app_manifest.yaml
+├── README
+│   ├── app-gen-tool.jpeg
+│   ├── app-manifest-config-empty.png
+│   └── setup-cfg.png
+├── README.md
+├── templates_flux
+│   ├── base
+│   ├── fluxcd-manifest
+│   └── kustomization.template
+└── templates_plugins
+    ├── common.template
+    ├── helm.template
+    ├── kustomize.template
+    └── lifecycle.template
+```
 
 The `app_manifest.yaml` is the most important configuration step since it
 specifies everything necessary to build the StarlingX application.
@@ -163,7 +179,7 @@ have their own dedicated section below:
 In this stage the section **appManifestFile-config** from the
 `app_manifest.yaml` will be configured.
 
-![app manifest config](BuildGuide/app-manifest-config-empty.png)
+![app manifest config](README/app-manifest-config-empty.png)
 
 These are the minimum required fields that will need to be filled in order
 for the StarlingX App Generator to work properly.
@@ -212,7 +228,7 @@ will be configured.
 Below you will find a brief explanation of every one of the required fields
 which will help you fill them out for you application:
 
-![setup cfg image](BuildGuide/setup-cfg.png)
+![setup cfg image](README/setup-cfg.png)
 
 - **metadata** section:
   - **author/author-email/url fields**: authorship information.
@@ -368,7 +384,7 @@ overwritten inside the values.yaml of the Helm chart.
 ### Plugins
 
 The StarlingX App Generator will create 3 main plugins: the Helm,
-the kustomize and the lifecycle plugins.
+the Kustomize and the Lifecycle plugins.
 
 - The `helm/APP_NAME.py` file is responsible for the overriding methods that will
   be used to create the Helm overrides for the StarlingX App.
