@@ -5,10 +5,10 @@ in an easy way without the complete StarlingX build environment.
 
 ## TODO list
 
-- [ ] Remove the need for `appManifestFile-config.chartGroup.chart_names` in `app_manifest.yaml` since it can be
+- [x] Remove the need for `appManifestFile-config.chartGroup.chart_names` in `app_manifest.yaml` since it can be
 inferred by `appManifestFile-config.chart.name[]`.
-  - [ ] Also remove the redundant chartGroup in the process.
-- [ ] Test what happens if we have a Helm chart that has a fixed container image instead of an overridable one.
+  - [x] Also remove the redundant chartGroup in the process.
+- [x] Test what happens if we have a Helm chart that has a fixed container image instead of an overridable one.
 - [ ] Explain better why our generated system overrides is empty.
 
 ## Why deploy an application as a StarlingX application?
@@ -63,11 +63,6 @@ appManifestFile-config:
     - name: chart1
       version: 1.0.1
       path: /path/to/chart1
-      chartGroup: chartgroup1
-  chartGroup:
-    - name: chartgroup1
-      chart_names:
-        - chart1
 
 setupFile-config:
   metadata: 
@@ -110,21 +105,32 @@ https://github.com/Danmcaires/StarlingX-App-Generator (this is a temporary
 repository, all relevant info/code, if any, will be moved to official
 repositories by the end of this study).
 
-* [Deploy an application as a StarlingX app](#deploy-an-application-as-a-starlingx-app)
-  * [Prerequisites](#prerequisites)
-  * [Generate the StarlingX Application package](#generate-the-starlingx-application-package)
-    * [App manifest configuration](#app-manifest-configuration)
-    * [Metadata File Configuration](#metadata-file-configuration)
-    * [App Setup configuration](#app-setup-configuration)
-  * [Run the StarlingX App Generator](#run-the-starlingx-app-generator)
-    * [FluxCD Manifest](#fluxcd-manifest)
-    * [Plugins](#plugins)
-    * [Metadata](#metadata)
-    * [Tarballs](#tarballs)
-  * [Customizing the application](#customizing-the-application)
-    * [FluxCD Manifest](#fluxcd-manifest-1)
-    * [Plugins](#plugins-1)
-    * [Other files](#other-files)
+- [StarlingX Application Generation Tool](#starlingx-application-generation-tool)
+  - [TODO list](#todo-list)
+  - [Why deploy an application as a StarlingX application?](#why-deploy-an-application-as-a-starlingx-application)
+  - [Pre-requisite](#pre-requisite)
+  - [General Overview](#general-overview)
+  - [3 Steps to create a Starlingx App](#3-steps-to-create-a-starlingx-app)
+    - [1. Prepare Helm chart(s)](#1-prepare-helm-charts)
+      - [What is Helm and a Helm chart?](#what-is-helm-and-a-helm-chart)
+      - [How to develop a Helm chart?](#how-to-develop-a-helm-chart)
+    - [2. Create an app manifest](#2-create-an-app-manifest)
+      - [3. Run the StarlingX App Generator](#3-run-the-starlingx-app-generator)
+- [Deploy an application as a StarlingX app](#deploy-an-application-as-a-starlingx-app)
+  - [Prerequisites](#prerequisites)
+  - [Generate the StarlingX Application package](#generate-the-starlingx-application-package)
+    - [App manifest configuration](#app-manifest-configuration)
+    - [Metadata File Configuration](#metadata-file-configuration)
+    - [App Setup configuration](#app-setup-configuration)
+  - [Run the StarlingX App Generator](#run-the-starlingx-app-generator)
+    - [FluxCD Manifest](#fluxcd-manifest)
+    - [Plugins](#plugins)
+    - [Metadata](#metadata)
+    - [Tarballs](#tarballs)
+  - [Customizing the application](#customizing-the-application)
+    - [FluxCD Manifest](#fluxcd-manifest-1)
+    - [Plugins](#plugins-1)
+    - [Other files](#other-files)
 
 ## Prerequisites
 
