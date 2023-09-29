@@ -369,8 +369,8 @@ class FluxApplication:
 
 
             # generate a manifest/static-overrides file
-            system_override_file = flux_dir + '/' + a_chart['name'] + '/' + a_chart['name'] + '-static-overrides.yaml'
-            open(system_override_file, 'w').close()
+            static_override_file = flux_dir + '/' + a_chart['name'] + '/' + a_chart['name'] + '-static-overrides.yaml'
+            open(static_override_file, 'w').close()
 
         return True
 
