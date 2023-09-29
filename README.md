@@ -26,10 +26,10 @@ Below you will find the steps to deploy an application as a **StarlingX App**.
 
 ## TODO list
 
-- [ ] Remove the need for `appManifestFile-config.chartGroup.chart_names` in `app_manifest.yaml` since it can be
+- [x] Remove the need for `appManifestFile-config.chartGroup.chart_names` in `app_manifest.yaml` since it can be
 inferred by `appManifestFile-config.chart.name[]`.
-  - [ ] Also remove the redundant chartGroup in the process.
-- [ ] Test what happens if we have a Helm chart that has a fixed container image instead of an overridable one.
+  - [x] Also remove the redundant chartGroup in the process.
+- [x] Test what happens if we have a Helm chart that has a fixed container image instead of an overridable one.
 - [ ] Explain better why our generated system overrides is empty.
 
 ## Why deploy an application as a StarlingX application?
@@ -176,6 +176,7 @@ The generator functions as it can be seen below
 
 The following sections explain in high-level the most important parts of the
 package.
+
 ### FluxCD Manifest
 
 The generator will first create the FluxCD Manifest following the structure below:
