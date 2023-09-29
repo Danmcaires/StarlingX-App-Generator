@@ -5,10 +5,10 @@ in an easy way without the complete StarlingX build environment.
 
 ## TODO list
 
-- [ ] Remove the need for `appManifestFile-config.chartGroup.chart_names` in `app_manifest.yaml` since it can be
+- [x] Remove the need for `appManifestFile-config.chartGroup.chart_names` in `app_manifest.yaml` since it can be
 inferred by `appManifestFile-config.chart.name[]`.
-  - [ ] Also remove the redundant chartGroup in the process.
-- [ ] Test what happens if we have a Helm chart that has a fixed container image instead of an overridable one.
+  - [x] Also remove the redundant chartGroup in the process.
+- [x] Test what happens if we have a Helm chart that has a fixed container image instead of an overridable one.
 - [ ] Explain better why our generated system overrides is empty.
 
 ## Why deploy an application as a StarlingX application?
@@ -63,11 +63,6 @@ appManifestFile-config:
     - name: chart1
       version: 1.0.1
       path: /path/to/chart1
-      chartGroup: chartgroup1
-  chartGroup:
-    - name: chartgroup1
-      chart_names:
-        - chart1
 
 setupFile-config:
   metadata: 

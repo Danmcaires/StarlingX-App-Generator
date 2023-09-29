@@ -8,13 +8,6 @@ appManifestFile-config:
     - name: # required
       version: # required
       path: # required
-      chartGroup: # required
-    # add more if you have more than one chart
-  chartGroup:
-    - name: # required
-      chart_names:
-        - # required
-        - # optional
 #################################################
 ## App Metadata Configuration
 # for further details about possible configurations on this file, please
