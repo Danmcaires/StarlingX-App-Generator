@@ -3,6 +3,27 @@
 The purpose of this tool is to generate a StarlingX App from a workload/app
 in an easy way without the complete StarlingX build environment.
 
+Below you will find the steps to deploy an application as a **StarlingX App**.
+
+- [StarlingX Application Generation Tool](#starlingx-application-generation-tool)
+  - [TODO list](#todo-list)
+  - [Why deploy an application as a StarlingX application?](#why-deploy-an-application-as-a-starlingx-application)
+  - [Tools requirements](#tools-requirements)
+  - [Prerequisites](#prerequisites)
+  - [Generate the StarlingX Application package](#generate-the-starlingx-application-package)
+    - [App manifest configuration](#app-manifest-configuration)
+    - [Metadata File Configuration](#metadata-file-configuration)
+    - [App Setup configuration](#app-setup-configuration)
+  - [Run the StarlingX App Generator](#run-the-starlingx-app-generator)
+    - [FluxCD Manifest](#fluxcd-manifest)
+    - [Plugins](#plugins)
+    - [Metadata](#metadata)
+    - [Tarballs](#tarballs)
+  - [Customizing the application](#customizing-the-application)
+    - [FluxCD Manifest](#fluxcd-manifest-1)
+    - [Plugins](#plugins-1)
+    - [Other files](#other-files)
+
 ## TODO list
 
 - [x] Remove the need for `appManifestFile-config.chartGroup.chart_names` in `app_manifest.yaml` since it can be
@@ -22,104 +43,12 @@ ways to the Kubernetes cluster(s) that StarlingX manages:
 - as a StarlingX Application, which benefits from tight integration with the
   [StarlingX system](https://opendev.org/starlingx/config).
 
-## Pre-requisite
+## Tools requirements
 
 - Helm version 2+
 - Python version 3.8+
 - `pyyaml` version 6.0+
   - `$ pip3 install pyyaml==6.0.1`
-
-## General Overview
-
-![app flowchart](README/app-gen-tool.jpeg)
-
-## 3 Steps to create a Starlingx App
-
-### 1. Prepare Helm chart(s)
-
-#### What is Helm and a Helm chart?
-
-Helm is a Kubernetes package and operations manager. A Helm chart can contain
-any number of Kubernetes objects, all of which are deployed as part of the
-chart.
-
-The official place to find available Helm Charts is: https://artifacthub.io/.
-
-#### How to develop a Helm chart?
-
-Refer to official [helm doc](https://helm.sh/docs/)
-
-### 2. Create an app manifest
-
-A few essential fields are needed to create the app. The simplest
-example is:
-
-```yaml
-appManifestFile-config:
-  appName: stx-app
-  appVersion: 1.0.1
-  namespace: default
-  chart:
-    - name: chart1
-      version: 1.0.1
-      path: /path/to/chart1
-
-setupFile-config:
-  metadata: 
-      author: John Doe
-      author-email: john.doe@email.com
-      url: johndoe.com
-      classifier: # required
-        - "Operating System :: OS Independent"
-        - "License :: OSI Approved :: MIT License"
-        - "Programming Language :: Python :: 3"
-```
-
-#### 3. Run the StarlingX App Generator
-
-```shell
-python3 app-gen.py -i app_manifest.yaml [-o ./output] [--overwrite] [--no-package]|[--package-only]
-```
-
-Where:
-
-- `-i/--input`: path to the `app_manifest.yaml` configuration file.
-- `-o/--output`: output folder. Defaults to a new folder with the app name in
-  the current directory.
-- `--overwrite`: deletes existing output folder before starting.
-- `--no-package`: only creates the FluxCD manifest, plugins and the
-  metadata file, without compressing them in a tarball.
-- `--package-only`: create the plugins wheels, sha256 file, helm-chart tarball
-  and package the entire application into a tarball.
-
-Below you will find detailed instructions on how to use this repo to create
-a StarlingX App package from your own code.
-
-# Deploy an application as a StarlingX app
-
-This guide describes the steps to deploy an application as a **StarlingX App**
-utilizing the StarlingX's App Generator tool.
-
-If you want to learn more about the app generator tool, please visit
-https://github.com/Danmcaires/StarlingX-App-Generator (this is a temporary
-repository, all relevant info/code, if any, will be moved to official
-repositories by the end of this study).
-
-* [Deploy an application as a StarlingX app](#deploy-an-application-as-a-starlingx-app)
-  * [Prerequisites](#prerequisites)
-  * [Generate the StarlingX Application package](#generate-the-starlingx-application-package)
-    * [App manifest configuration](#app-manifest-configuration)
-    * [Metadata File Configuration](#metadata-file-configuration)
-    * [App Setup configuration](#app-setup-configuration)
-  * [Run the StarlingX App Generator](#run-the-starlingx-app-generator)
-    * [FluxCD Manifest](#fluxcd-manifest)
-    * [Plugins](#plugins)
-    * [Metadata](#metadata)
-    * [Tarballs](#tarballs)
-  * [Customizing the application](#customizing-the-application)
-    * [FluxCD Manifest](#fluxcd-manifest-1)
-    * [Plugins](#plugins-1)
-    * [Other files](#other-files)
 
 ## Prerequisites
 
@@ -240,6 +169,10 @@ python3 app-gen.py -i app_manifest.yaml
 
 With the command above, the StarlingX App Generator will create a set of files
 and package everything in the StarlingX format.
+
+The generator functions as it can be seen below
+
+![app flowchart](README/app-gen-tool.jpeg)
 
 The following sections explain in high-level the most important parts of the
 package.
