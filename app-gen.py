@@ -369,9 +369,8 @@ class FluxApplication:
 
 
             # generate a manifest/static-overrides file
-            static_override_file = flux_dir + '/' + a_chart['name'] + '/' + a_chart['name'] + '-static-overrides.yaml'
-            with open(static_override_file, 'w') as f:
-                f.write('image:\n  repository: docker.io/brunomuniz/poc-starlingx')
+            system_override_file = flux_dir + '/' + a_chart['name'] + '/' + a_chart['name'] + '-static-overrides.yaml'
+            open(system_override_file, 'w').close()
 
         return True
 
