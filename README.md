@@ -6,7 +6,6 @@ in an easy way without the complete StarlingX build environment.
 Below you will find the steps to deploy an application as a **StarlingX App**.
 
 - [StarlingX Application Generation Tool](#starlingx-application-generation-tool)
-  - [TODO list](#todo-list)
   - [Order precedence of configuration files](#config-files-precedence)
   - [Why deploy an application as a StarlingX application?](#why-deploy-an-application-as-a-starlingx-application)
   - [Tools requirements](#tools-requirements)
@@ -24,14 +23,6 @@ Below you will find the steps to deploy an application as a **StarlingX App**.
     - [FluxCD Manifest](#fluxcd-manifest-1)
     - [Plugins](#plugins-1)
     - [Other files](#other-files)
-
-## TODO list
-
-- [x] Remove the need for `appManifestFile-config.chartGroup.chart_names` in `app_manifest.yaml` since it can be
-inferred by `appManifestFile-config.chart.name[]`.
-  - [x] Also remove the redundant chartGroup in the process.
-- [x] Test what happens if we have a Helm chart that has a fixed container image instead of an overridable one.
-- [x] Explain better why our generated system overrides is empty.
 
 ## Config files precedence
 When packaging an application as an starlingx application, you can place specific application's
