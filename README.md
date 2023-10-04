@@ -7,6 +7,7 @@ Below you will find the steps to deploy an application as a **StarlingX App**.
 
 - [StarlingX Application Generation Tool](#starlingx-application-generation-tool)
   - [TODO list](#todo-list)
+  - [Order precedence of configuration files](#config-files-precedence)
   - [Why deploy an application as a StarlingX application?](#why-deploy-an-application-as-a-starlingx-application)
   - [Tools requirements](#tools-requirements)
   - [Prerequisites](#prerequisites)
@@ -30,7 +31,16 @@ Below you will find the steps to deploy an application as a **StarlingX App**.
 inferred by `appManifestFile-config.chart.name[]`.
   - [x] Also remove the redundant chartGroup in the process.
 - [x] Test what happens if we have a Helm chart that has a fixed container image instead of an overridable one.
-- [ ] Explain better why our generated system overrides is empty.
+- [x] Explain better why our generated system overrides is empty.
+
+## Config files precedence
+When packaging an application as an starlingx application, you can place specific application's
+in multiple places (even though you probably shouldn't). The files where you can place these configurations
+will be listed below by their order of precedence in descending sorting.
+1. user-overrides.yaml - passed as in input after an application has been uploaded through the command "system helm-override-update -i _user-overrides.yaml_" ...
+2. _application-name_/plugins/**/helm/*.py - configurations passed into the `get_overrides` function
+3. _application-name_/fluxcd-manifests/**/*-static-overrides.yaml - passed to the fluxcd static overrides file
+4. _helm-chart_/values.yaml
 
 ## Why deploy an application as a StarlingX application?
 
