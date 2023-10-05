@@ -27,16 +27,16 @@ Below you will find the steps to deploy an application as a **StarlingX App**.
 ## Config files precedence
 
 When packaging an application as a StarlingX App, there are multiple places
-where you can place your app configuration.
+where you can place your app [_config_](https://12factor.net/config).
 Below you'll find a list of those places in descending order by their
 precedence (every item on the list supersedes the one(s) below):
 
-1. User overrides file;
+1. User overrides;
 2. StarlingX App Plugin's `get_overrides` function;
 3. FluxCD Static Overrides file;
-5. Helm chart's `values.yaml` file.
+4. Helm chart's `values.yaml` file.
 
-### User overrides file
+### User overrides
 
 A YAML file, passed as a parameter to the `system helm-override-update ...` command when deploying a StarlingX App. Example: `system helm-override-update --values user-overrides.yaml`.
 
