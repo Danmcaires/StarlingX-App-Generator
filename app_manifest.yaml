@@ -12,6 +12,8 @@ appManifestFile-config:
 ## App Metadata Configuration
 # for further details about possible configurations on this file, please
 # visit the link: https://wiki.openstack.org/wiki/StarlingX/Containers/StarlingXAppsInternals#metadata.yaml
+# if you want to see an example of a metadata file in another application, please visit:
+# https://opendev.org/starlingx/portieris-armada-app/src/branch/master/stx-portieris-helm/stx-portieris-helm/files/metadata.yaml
 metadataFile-config:
   # the following configurations are optional
   # uncomment and configure properly the ones you need for your application metadata
