@@ -6,7 +6,7 @@ in an easy way without the complete StarlingX build environment.
 Below you will find the steps to deploy an application as a **StarlingX App**.
 
 - [StarlingX Application Generation Tool](#starlingx-application-generation-tool)
-  - [TODO list](#todo-list)
+  - [Config files precedence](#config-files-precedence)
   - [Why deploy an application as a StarlingX application?](#why-deploy-an-application-as-a-starlingx-application)
   - [Tools requirements](#tools-requirements)
   - [Prerequisites](#prerequisites)
@@ -24,13 +24,41 @@ Below you will find the steps to deploy an application as a **StarlingX App**.
     - [Plugins](#plugins-1)
     - [Other files](#other-files)
 
-## TODO list
+## Config files precedence
 
-- [x] Remove the need for `appManifestFile-config.chartGroup.chart_names` in `app_manifest.yaml` since it can be
-inferred by `appManifestFile-config.chart.name[]`.
-  - [x] Also remove the redundant chartGroup in the process.
-- [x] Test what happens if we have a Helm chart that has a fixed container image instead of an overridable one.
-- [ ] Explain better why our generated system overrides is empty.
+When packaging an application as a StarlingX App, there are multiple places
+where you can place your app [_config_](https://12factor.net/config).
+Below you'll find a list of those places in descending order by their
+precedence (every item on the list supersedes the one(s) below):
+
+1. User overrides;
+2. StarlingX App Plugin's `get_overrides` function;
+3. FluxCD Static Overrides file;
+4. Helm chart's `values.yaml` file.
+
+### User overrides
+
+A YAML file, passed as a parameter to the `system helm-override-update ...` command when deploying a StarlingX App. Example: `system helm-override-update --values user-overrides.yaml`.
+
+### StarlingX App Plugin's `get_overrides` funtion
+
+Every StarlingX App requires a plugin to interact with the StarlingX system.
+You can set configuration for your app in this plugin, at the `get_overrides`
+function. 
+
+In a StarlingX App package, the `get_overrides` function can be found in the
+following location: `<application-name>/plugins/**/helm/*.py`.
+
+### FluxCD Static Overrides file
+
+In a StarlingX App package, the FluxCD Static OVerrides file can be found in the
+following location: 
+`<application-name>/fluxcd-manifests/**/*-static-overrides.yaml`.
+
+### Helm chart's `values.yaml` file
+
+The well-known `values.yaml` file from your Helm chart can continue to set
+default values for your Helm templates.
 
 ## Why deploy an application as a StarlingX application?
 
